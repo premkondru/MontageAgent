@@ -220,20 +220,6 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# ---------- Preview controls (Zoom) ----------
-st.subheader("Preview controls")
-zc1, zc2, zc4 = st.columns([1, 1, 4])
-with zc1:
-    if st.button("ZOOM-"):
-        st.session_state.preview_zoom = max(0.25, round(st.session_state.preview_zoom - 0.1, 2))
-with zc2:
-    if st.button("ZOOM+"):
-        st.session_state.preview_zoom = min(2.0, round(st.session_state.preview_zoom + 0.1, 2))
-# with zc3:
-#    if st.button("R"):
-        st.session_state.preview_zoom = 1.0
-with zc4:
-    st.write(f"**{int(st.session_state.preview_zoom * 100)}%**")
 
 # ---------- Upload images ----------
 st.subheader("Upload images (optional)")
@@ -306,6 +292,18 @@ if st.session_state.results:
 posts = st.session_state.posts
 if posts:
     st.subheader("Preview Posts (per cluster)")
+    zc1, zc2, zc4 = st.columns([1, 1, 4])
+    with zc1:
+        if st.button("ZOOM-"):
+            st.session_state.preview_zoom = max(0.25, round(st.session_state.preview_zoom - 0.1, 2))
+    with zc2:
+        if st.button("ZOOM+"):
+            st.session_state.preview_zoom = min(2.0, round(st.session_state.preview_zoom + 0.1, 2))
+    # with zc3:
+    #    if st.button("R"):
+            st.session_state.preview_zoom = 1.0
+    with zc4:
+        st.write(f"**{int(st.session_state.preview_zoom * 100)}%**")
     for idx, p in enumerate(posts):
         images = [ip for ip in (p.get("images") or []) if isinstance(ip, str)]
         n = len(images)
