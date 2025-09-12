@@ -304,6 +304,7 @@ if posts:
             st.session_state.preview_zoom = 1.0
     with zc4:
         st.write(f"**{int(st.session_state.preview_zoom * 100)}%**")
+
     for idx, p in enumerate(posts):
         images = [ip for ip in (p.get("images") or []) if isinstance(ip, str)]
         n = len(images)
