@@ -4,6 +4,7 @@ pandas
 scikit-learn
 Pillow
 tqdm
+pyyaml
 
 # Vector & similarity
 faiss-cpu
