@@ -9,3 +9,4 @@ pyyaml
 torch
 torchvision
 open-clip-torch
+requests

@@ -1,18 +1,17 @@
 import os
-from typing import Dict, Any, List
+
+def _is_img(fn): return fn.lower().endswith(('.jpg','.jpeg','.png'))
 class Ingestor:
-    def __init__(self, cfg: Dict[str, Any]): self.cfg=cfg
-    def __call__(self)->List[Dict[str,Any]]:
-        roots=self.cfg.get('ingest',{}).get('dirs',['data/events'])
-        items=[]
+    def __init__(self,cfg): self.cfg=cfg
+    def __call__(self):
+        roots=self.cfg.get('ingest',{}).get('dirs',['data/events']); items=[]
         for root in roots:
             if not os.path.isdir(root): continue
-            for entry in sorted(os.listdir(root)):
-                path=os.path.join(root,entry)
-                if os.path.isdir(path):
-                    for fname in os.listdir(path):
-                        if fname.lower().endswith(('.jpg','.jpeg','.png')):
-                            items.append({'path': os.path.join(path,fname), 'day': entry, 'meta': {}})
-                elif entry.lower().endswith(('.jpg','.jpeg','.png')):
-                    items.append({'path': path, 'day': os.path.basename(root), 'meta': {}})
+            for e in sorted(os.listdir(root)):
+                p=os.path.join(root,e)
+                if os.path.isdir(p):
+                    for f in os.listdir(p):
+                        if _is_img(f): items.append({'path':os.path.join(p,f),'day':e,'meta':{}})
+                elif _is_img(e):
+                    items.append({'path':p,'day':os.path.basename(root),'meta':{}})
         return items

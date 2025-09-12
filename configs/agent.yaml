@@ -1,6 +1,6 @@
 pipeline: [ingest, dedupe_quality, categorize, select_diverse, cluster, captioner, publisher]
-cluster: {enabled: true, k: "auto", max_images_per_post: 10, use_clip: true}
 embeddings: {backend: openclip, model: ViT-B-32, pretrained: laion2b_s34b_b79k, device: cpu}
 dedupe: {method: clip, clip_threshold: 0.985, near_dup_threshold: 5}
+cluster: {use_clip: true, k: auto, max_images_per_post: 10}
 selection: {k: 48}
 publisher: {enabled: false, dry_run: true}

@@ -1,2 +1,5 @@
 # Montage Photo Agent
-Full app with CLIP dedupe+clustering, Streamlit UI, and export.
+
+Author: Prem Kondru (IIT Guwahati, B.Tech Engineering Physics)
+
+See docs and run with Streamlit.
