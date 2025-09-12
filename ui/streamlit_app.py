@@ -1,15 +1,16 @@
-# Montage Photo Agent — Streamlit UI (improved Preview)
+# Montage Photo Agent — Streamlit UI (No-HTML, PIL Card)
 # - Upload images (persisted across reruns)
 # - Run pipeline (Supervisor) once; persist results/posts in session_state
-# - Preview per cluster with: card border, IG-style frame, ◀ ▶ nav, thumbnails, include toggles
+# - Preview per cluster with: card border, IG-like composed image (black box), top ◀ ▶ nav
 # - IG-sized (4:5, 1080x1350) with zoom (starts at 25%)
 # - CLIP dedupe+clustering; Export JSON for IG carousels
 
-import sys, os, time, yaml, json, importlib.util, base64
-from io import BytesIO
+import sys, os, time, yaml, json, importlib.util, re
 from pathlib import Path
+from io import BytesIO
+
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageColor
 
 # Ensure repo root is importable even if Streamlit launched from elsewhere
 repo_root = Path(__file__).resolve().parents[1]
@@ -27,61 +28,176 @@ except ModuleNotFoundError:
     spec.loader.exec_module(mod)  # type: ignore[attr-defined]
     Supervisor = mod.Supervisor
 
+
 # ---------- Helpers ----------
 def resize_for_instagram(img_path: str, target_ratio=(4, 5), target_size=(1080, 1350)) -> Image.Image:
-    # Center-crops to 4:5 and resizes to 1080x1350 for IG portrait previews.
+    """Center-crop to 4:5 and resize to 1080x1350."""
     im = Image.open(img_path).convert("RGB")
     w, h = im.size
-    target_aspect = target_ratio[0] / target_ratio[1]
-    current_aspect = w / h
-    if current_aspect > target_aspect:
-        new_w = int(h * target_aspect)
+    ta = target_ratio[0] / target_ratio[1]
+    ca = w / h
+    if ca > ta:
+        new_w = int(h * ta)
         left = (w - new_w) // 2
         im = im.crop((left, 0, left + new_w, h))
-    elif current_aspect < target_aspect:
-        new_h = int(w / target_aspect)
+    elif ca < ta:
+        new_h = int(w / ta)
         top = (h - new_h) // 2
         im = im.crop((0, top, w, top + new_h))
     im = im.resize(target_size, Image.LANCZOS)
     return im
 
 def apply_zoom(im: Image.Image, zoom: float) -> Image.Image:
-    # Allow 25%–200% zoom
-    zoom = max(0.35, min(2.0, float(zoom)))
+    """Scale composed preview. 25%–200%."""
+    z = max(0.25, min(2.0, float(zoom)))
     w, h = im.size
-    return im.resize((int(w * zoom), int(h * zoom)), Image.LANCZOS)
+    return im.resize((max(1, int(w * z)), max(1, int(h * z))), Image.LANCZOS)
 
-def pil_to_base64(im: Image.Image) -> str:
-    buf = BytesIO()
-    im.save(buf, format="JPEG", quality=92, optimize=True)
-    return base64.b64encode(buf.getvalue()).decode("ascii")
+def strip_hashtags(text: str) -> str:
+    if not text:
+        return ""
+    txt = re.sub(r'(^|\s)#[\w_]+', r'\1', text)
+    return re.sub(r'\s{2,}', ' ', txt).strip()
 
-def render_ig_post_html(preview_im: Image.Image, caption: str, hashtags):
-    b64 = pil_to_base64(preview_im)
-    tags = " ".join(hashtags or [])
-    w, h = preview_im.size
-    html = f"""
-    <div class="ig-frame">
-      <img src="data:image/jpeg;base64,{b64}" width="{w}" height="{h}" style="display:block;height:auto;" />
-      <div class="ig-caption">{caption}</div>
-      <div class="ig-hashtags">{tags}</div>
-    </div>
+def _load_font(size: int) -> ImageFont.ImageFont:
     """
-    return html
+    Try to load a nice TTF font; fall back to PIL default.
+    """
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  # Linux
+        "/System/Library/Fonts/Supplemental/Arial.ttf",     # macOS
+        "/Library/Fonts/Arial.ttf",                         # macOS (alt)
+        "C:\\Windows\\Fonts\\arial.ttf",                    # Windows
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                return ImageFont.truetype(p, size=size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
+    """
+    Try to load a nice TTF font; fall back to PIL default.
+    """
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial.ttf",
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                return ImageFont.truetype(p, size=size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
+
+def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    """Greedy wrap text so that each line fits within max_width."""
+    words = (text or "").split()
+    lines = []
+    cur = []
+    for w in words:
+        test = (" ".join(cur + [w])).strip()
+        if draw.textlength(test, font=font) <= max_width:
+            cur.append(w)
+        else:
+            if cur:
+                lines.append(" ".join(cur))
+            cur = [w]
+    if cur:
+        lines.append(" ".join(cur))
+    return lines
+
+def compose_ig_card(base_img: Image.Image, caption: str, hashtags: list[str]) -> Image.Image:
+    """
+    Build a single image containing:
+      - black rectangular border (outer)
+      - the IG-cropped image
+      - caption (bold-ish)
+      - hashtags (lighter)
+    No HTML used.
+    """
+    # Frame metrics
+    frame_border = 8        # outer black border thickness
+    inner_pad = 20          # white padding inside the black frame
+    gap_img_to_text = 16
+    gap_lines = 6
+
+    # Typography
+    cap_font = _load_font(36)
+    tag_font = _load_font(30)
+    cap_color = (0, 0, 0)
+    tag_color = (40, 40, 40)
+
+    # Box width equals image width + paddings
+    img_w, img_h = base_img.size
+    box_inner_w = img_w
+    text_max_w = box_inner_w
+
+    # Prepare text
+    caption = caption or ""
+    tags_line = " ".join(hashtags or [])
+
+    # Measure wrapped text
+    tmp = Image.new("RGB", (10, 10), "white")
+    draw = ImageDraw.Draw(tmp)
+    cap_lines = _wrap_text(draw, caption, cap_font, text_max_w)
+    tag_lines = _wrap_text(draw, tags_line, tag_font, text_max_w) if tags_line else []
+
+    # Compute text block height
+    def line_height(font):  # conservative height
+        ascent, descent = font.getmetrics() if hasattr(font, "getmetrics") else (font.size, 0)
+        return ascent + descent + 4
+
+    cap_h = sum(line_height(cap_font) for _ in cap_lines) if cap_lines else 0
+    tag_h = sum(line_height(tag_font) for _ in tag_lines) if tag_lines else 0
+    text_block_h = (gap_img_to_text if (cap_h or tag_h) else 0) + cap_h + (gap_lines if (cap_h and tag_h) else 0) + tag_h
+
+    # Final card size
+    card_w = box_inner_w + 2 * (inner_pad + frame_border)
+    card_h = img_h + text_block_h + 2 * (inner_pad + frame_border)
+
+    # Create white canvas then draw black border
+    card = Image.new("RGB", (card_w, card_h), "white")
+    # Outer black rectangle
+    ImageDraw.Draw(card).rectangle([(0, 0), (card_w - 1, card_h - 1)], outline="black", width=frame_border)
+
+    # Paste image (top area)
+    x0 = frame_border + inner_pad
+    y0 = frame_border + inner_pad
+    card.paste(base_img, (x0, y0))
+
+    # Text area origin
+    ty = y0 + img_h + (gap_img_to_text if (cap_h or tag_h) else 0)
+    draw = ImageDraw.Draw(card)
+
+    # Caption
+    for line in cap_lines:
+        draw.text((x0, ty), line, fill=cap_color, font=cap_font)
+        ty += line_height(cap_font)
+
+    # Gap between caption and tags
+    if cap_lines and tag_lines:
+        ty += gap_lines
+
+    # Hashtags
+    for line in tag_lines:
+        draw.text((x0, ty), line, fill=tag_color, font=tag_font)
+        ty += line_height(tag_font)
+
+    return card
+
 
 # ---------- Page ----------
 st.set_page_config(page_title="Montage Photo Agent", layout="wide")
 st.title("Montage Photo Agent")
 st.write("Automate sorting → **dedupe (CLIP)** → **clustering (CLIP)** → captioning → (optional) publishing.")
 
-# Global CSS (post card + IG frame)
+# Minimal CSS for card container
 st.markdown("""
 <style>
 .post-card{border:1px solid #d0d0d0; border-radius:8px; padding:14px; margin:18px 0; background:#fafafa;}
-.ig-frame{border:2px solid #000; padding:10px; background:#fff; display:inline-block;}
-.ig-caption{font-weight:600; margin-top:10px; font-size:1.05rem;}
-.ig-hashtags{color:#444; margin-top:6px; font-size:0.95rem; word-wrap:break-word;}
-.navbtn{width:100%; height:42px; font-size:1.1rem;}
 .thumb-caption{font-size:0.8rem;}
 </style>
 """, unsafe_allow_html=True)
@@ -98,7 +214,7 @@ for key, default in [
     ("upload_session_dir", None),
     ("results", None),
     ("posts", None),
-    ("preview_zoom", 0.35),     # Start at 25% zoom (was 1.0 before)
+    ("preview_zoom", 0.25),     # Start small
     ("include_map", {}),
 ]:
     if key not in st.session_state:
@@ -106,20 +222,20 @@ for key, default in [
 
 # ---------- Preview controls (Zoom) ----------
 st.subheader("Preview controls")
-zc1, zc2, zc3, zc4 = st.columns([1, 1, 2, 8])
+zc1, zc2, zc4 = st.columns([1, 1, 4])
 with zc1:
-    if st.button("Zoom -"):
-        st.session_state.preview_zoom = max(0.35, round(st.session_state.preview_zoom - 0.1, 2))
+    if st.button("ZOOM-"):
+        st.session_state.preview_zoom = max(0.25, round(st.session_state.preview_zoom - 0.1, 2))
 with zc2:
-    if st.button("Zoom +"):
+    if st.button("ZOOM+"):
         st.session_state.preview_zoom = min(2.0, round(st.session_state.preview_zoom + 0.1, 2))
-with zc3:
-    if st.button("Reset"):
+# with zc3:
+#    if st.button("R"):
         st.session_state.preview_zoom = 1.0
 with zc4:
-    st.write(f"Current Zoom: **{int(st.session_state.preview_zoom * 100)}%**")
+    st.write(f"**{int(st.session_state.preview_zoom * 100)}%**")
 
-# ---------- Upload images (persist across reruns) ----------
+# ---------- Upload images ----------
 st.subheader("Upload images (optional)")
 uploads = st.file_uploader(
     "Drop JPG/PNG files",
@@ -135,9 +251,7 @@ if uploads:
     saved = 0
     for i, uf in enumerate(uploads, start=1):
         fname = os.path.basename(uf.name)
-        safe = "".join(c for c in fname if (c.isalnum() or c in ("-", "_", "."))).strip(".")
-        if not safe:
-            safe = f"upload_{i}.jpg"
+        safe = "".join(c for c in fname if (c.isalnum() or c in ("-", "_", "."))).strip(".") or f"upload_{i}.jpg"
         target = os.path.join(st.session_state.upload_session_dir, safe)
         if not os.path.exists(target):
             with open(target, "wb") as out:
@@ -150,22 +264,20 @@ if uploads:
         st.info(f"Files already saved in `{st.session_state.upload_session_dir}`")
 
 # ---------- Actions ----------
-c1, c2, c3, c4 = st.columns([1, 1, 2, 6])
+use_upload_only = st.checkbox("Use only current upload session", value=False)
+c1, c2, c3 = st.columns([2, 3, 5])
 with c1:
     run_clicked = st.button("Run Pipeline", type="primary")
 with c2:
-    use_upload_only = st.checkbox("Use only current upload session", value=False)
-with c3:
     if st.button("Clear Preview"):
         st.session_state.results = None
         st.session_state.posts = None
         st.session_state.include_map = {}
 
-# Run the pipeline only when requested; persist results/posts
+# Run pipeline on demand
 if run_clicked:
     runtime_cfg = dict(cfg)
-    if "ingest" not in runtime_cfg:
-        runtime_cfg["ingest"] = {}
+    runtime_cfg.setdefault("ingest", {})
     if use_upload_only and st.session_state.upload_session_dir:
         runtime_cfg["ingest"]["dirs"] = [st.session_state.upload_session_dir]
 
@@ -180,7 +292,7 @@ if run_clicked:
             break
     st.session_state.posts = posts
 
-# Optional: step outputs for debugging (also show errors if any)
+# Optional debug
 if st.session_state.results:
     with st.expander("Pipeline step outputs", expanded=False):
         for r in st.session_state.results:
@@ -190,7 +302,7 @@ if st.session_state.results:
             except Exception:
                 st.write(r.output)
 
-# ---------- Preview posts (always from session state) ----------
+# ---------- Preview posts ----------
 posts = st.session_state.posts
 if posts:
     st.subheader("Preview Posts (per cluster)")
@@ -198,7 +310,7 @@ if posts:
         images = [ip for ip in (p.get("images") or []) if isinstance(ip, str)]
         n = len(images)
 
-        # Init include/exclude map for this cluster
+        # include/exclude map
         inc = st.session_state.include_map.get(idx)
         if inc is None:
             inc = {path: True for path in images}
@@ -207,76 +319,81 @@ if posts:
             for path in images:
                 inc.setdefault(path, True)
 
-        # Included images list and per-cluster carousel index
         included = [path for path in images if inc.get(path, True)]
         n_included = len(included)
 
-        # Post card border
         st.markdown('<div class="post-card">', unsafe_allow_html=True)
-
         st.markdown(f"**Post {idx+1}** — {n_included} selected / {n} total photo(s)")
 
         if n == 0:
             st.warning("This cluster contains no previewable images.")
-            st.markdown('</div>', unsafe_allow_html=True)  # close .post-card
+            st.markdown('</div>', unsafe_allow_html=True)
             st.divider()
             continue
 
-        # Maintain a per-cluster current index (1-based) and clamp to included list
+        # Per-cluster index
         cur_key = f"car_{idx}"
         if cur_key not in st.session_state:
             st.session_state[cur_key] = 1
+
+        # NAV ROW (buttons side-by-side on the left)
+        left_controls, _spacer = st.columns([2, 8])
+        with left_controls:
+            cprev, cnext = st.columns([1, 1])
+            prev_clicked = cprev.button("◀", key=f"prev_{idx}", use_container_width=True, disabled=(n_included < 2))
+            next_clicked = cnext.button("▶", key=f"next_{idx}", use_container_width=True, disabled=(n_included < 2))
+
+        if n_included > 0:
+            if prev_clicked:
+                st.session_state[cur_key] = 1 if (st.session_state[cur_key] - 1) < 1 else (st.session_state[cur_key] - 1)
+            if next_clicked:
+                st.session_state[cur_key] = n_included if (st.session_state[cur_key] + 1) > n_included else (st.session_state[cur_key] + 1)
+
+        # Compose and show IG-like card
         if n_included == 0:
-            # Nothing selected: show info instead of preview
             st.info("No images selected. Use the checkboxes below to include images in this post.")
         else:
             st.session_state[cur_key] = max(1, min(st.session_state[cur_key], n_included))
+            cur_img_path = included[st.session_state[cur_key] - 1]
+            if os.path.exists(cur_img_path):
+                base = resize_for_instagram(cur_img_path)
+                # Clean caption (no inline hashtags)
+                clean_caption = strip_hashtags(p.get("caption", ""))
+                card = compose_ig_card(base, clean_caption, p.get("hashtags", []))
+                zoomed = apply_zoom(card, st.session_state.preview_zoom)
+                st.image(zoomed)
+            else:
+                st.info(f"(Missing file) {cur_img_path}")
 
-            navL, mid, navR = st.columns([1, 8, 1])
-            with navL:
-                st.button("◀", key=f"prev_{idx}", use_container_width=True, disabled=(n_included < 2))
-                if st.session_state.get(f"prev_{idx}"):
-                    st.session_state[cur_key] = 1 if (st.session_state[cur_key] - 1) < 1 else (st.session_state[cur_key] - 1)
-
-            with mid:
-                cur_img_path = included[st.session_state[cur_key] - 1]
-                if os.path.exists(cur_img_path):
-                    base = resize_for_instagram(cur_img_path)
-                    zoomed = apply_zoom(base, st.session_state.preview_zoom)
-                    # IG frame (black border) with caption+hashtags underneath, like Instagram
-                    ig_html = render_ig_post_html(zoomed, p.get("caption", ""), p.get("hashtags", []))
-                    st.markdown(ig_html, unsafe_allow_html=True)
-                else:
-                    st.info(f"(Missing file) {cur_img_path}")
-
-            with navR:
-                st.button("▶", key=f"next_{idx}", use_container_width=True, disabled=(n_included < 2))
-                if st.session_state.get(f"next_{idx}"):
-                    st.session_state[cur_key] = n_included if (st.session_state[cur_key] + 1) > n_included else (st.session_state[cur_key] + 1)
-
-        # Thumbnails with include/exclude toggles (no "Use" button)
+        # Thumbnails — tighter packing, 1/4 size of previous (216x270 -> 54x68)
         st.write("**Thumbnails**")
-        thumbs_per_row = 6
+        thumbs_per_row = 3
+        thumb_w, thumb_h = 108, 135  # 1/2 of 216x270
+
         for start in range(0, n, thumbs_per_row):
             row_paths = images[start:start+thumbs_per_row]
-            cols = st.columns(len(row_paths))
+            # Use small gap if available; fall back if Streamlit < 1.25
+            try:
+                cols = st.columns(len(row_paths), gap=None)
+            except TypeError:
+                cols = st.columns(len(row_paths))
             for j, img_path in enumerate(row_paths):
                 with cols[j]:
                     try:
-                        thumb = resize_for_instagram(img_path, target_size=(216, 270))
-                        st.image(thumb, caption=os.path.basename(img_path))
+                        # Reuse IG crop, then shrink to tiny thumb
+                        thumb = resize_for_instagram(img_path).resize((thumb_w, thumb_h), Image.LANCZOS)
+                        # No caption to save vertical space
+                        st.image(thumb)
                     except Exception:
                         st.info("(thumb unavailable)")
-
-                    # Include/Exclude toggle (affects export and carousel list)
+                    # Include/Exclude toggle (kept; shortest label helps packing)
                     ck = st.checkbox("Include", value=inc.get(img_path, True), key=f"inc_{idx}_{start+j}")
                     inc[img_path] = ck
 
-        # Close post card border
         st.markdown('</div>', unsafe_allow_html=True)
         st.divider()
 
-    # ---------- Export IG carousel payloads (respecting include/exclude) ----------
+    # ---------- Export ----------
     export_rows = []
     for p_idx, p in enumerate(posts):
         imgs = [ip for ip in (p.get("images") or []) if isinstance(ip, str)]
