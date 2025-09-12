@@ -1,0 +1,62 @@
+# --- OS / IDE ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+*.log
+*.tmp
+*.bak
+
+# --- Environments ---
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- Streamlit ---
+.streamlit/secrets.toml
+
+# --- Project data (generated during runs) ---
+# event uploads and any large raw photo drops
+data/events/**
+# keep placeholders
+!data/events/**/.gitkeep
+!**/.gitkeep
+
+# model checkpoints and training artifacts
+models/checkpoints/**
+!models/checkpoints/.gitkeep
+
+# exports / reports produced by the app
+export/**
+ig_carousels_*.json
+
+# --- Caches ---
+.cache/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# --- Misc build/test output ---
+coverage/
+htmlcov/
+.tox/
+.pytest_cache/
