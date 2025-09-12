@@ -1,0 +1,18 @@
+model:
+  base: "blip2-flan-t5-base"   # placeholder
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+
+train:
+  epochs: 3
+  batch_size: 8
+  lr: 1e-4
+  scheduler: "cosine"
+  seed: 42
+
+data:
+  images_dir: "data/events"
+  captions_file: "data/style/past_captions.jsonl"
+  val_split: 0.1

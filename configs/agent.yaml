@@ -1,0 +1,28 @@
+orchestrator:
+  type: "simple_fsm"  # or langgraph
+  retry: 2
+
+pipeline:
+  - ingest
+  - dedupe_quality
+  - categorize
+  - select_diverse
+  - captioner
+  - critic
+  - publisher  # optional
+
+categorize:
+  labels: ["stage", "crowd", "award", "candid", "group", "portrait", "bts"]
+
+selection:
+  method: "kmedoids"
+  k: 12
+
+caption:
+  style_rag_top_k: 4
+  max_len: 200
+  emoji_policy: "minimal"
+
+publisher:
+  enabled: false
+  dry_run: true

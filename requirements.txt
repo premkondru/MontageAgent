@@ -1,0 +1,18 @@
+# Core
+numpy
+pandas
+scikit-learn
+Pillow
+tqdm
+
+# Vector & similarity
+faiss-cpu
+
+# UI
+streamlit
+
+# (Placeholders; pin in your real environment)
+# transformers
+# peft
+# torch
+# torchvision
