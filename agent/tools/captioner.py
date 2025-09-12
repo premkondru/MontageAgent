@@ -5,7 +5,7 @@ class Captioner:
         for cl in clusters:
             paths=[m['path'] for m in cl['items']]
             cid=int(cl.get('cluster_id',0))
-            caption=f"Highlights from the event — set {cid+1}. #IITGuwahati #Montage"
+            caption=f"Highlights from the event — set {cid+1}"
             hashtags=['#IITGuwahati','#Montage','#PhotographyClub']
             labels=[]
             for m in cl['items']:

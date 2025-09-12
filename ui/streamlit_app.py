@@ -47,7 +47,7 @@ def resize_for_instagram(img_path: str, target_ratio=(4, 5), target_size=(1080, 
 
 def apply_zoom(im: Image.Image, zoom: float) -> Image.Image:
     # Allow 25%–200% zoom
-    zoom = max(0.25, min(2.0, float(zoom)))
+    zoom = max(0.35, min(2.0, float(zoom)))
     w, h = im.size
     return im.resize((int(w * zoom), int(h * zoom)), Image.LANCZOS)
 
@@ -57,12 +57,12 @@ def pil_to_base64(im: Image.Image) -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 def render_ig_post_html(preview_im: Image.Image, caption: str, hashtags):
-    """Returns an HTML block that draws a black bordered IG-like frame containing image + caption + hashtags."""
     b64 = pil_to_base64(preview_im)
     tags = " ".join(hashtags or [])
+    w, h = preview_im.size
     html = f"""
     <div class="ig-frame">
-      <img src="data:image/jpeg;base64,{b64}" style="width:100%;display:block;" />
+      <img src="data:image/jpeg;base64,{b64}" width="{w}" height="{h}" style="display:block;height:auto;" />
       <div class="ig-caption">{caption}</div>
       <div class="ig-hashtags">{tags}</div>
     </div>
@@ -78,7 +78,7 @@ st.write("Automate sorting → **dedupe (CLIP)** → **clustering (CLIP)** → c
 st.markdown("""
 <style>
 .post-card{border:1px solid #d0d0d0; border-radius:8px; padding:14px; margin:18px 0; background:#fafafa;}
-.ig-frame{border:2px solid #000; padding:10px; background:#fff;}
+.ig-frame{border:2px solid #000; padding:10px; background:#fff; display:inline-block;}
 .ig-caption{font-weight:600; margin-top:10px; font-size:1.05rem;}
 .ig-hashtags{color:#444; margin-top:6px; font-size:0.95rem; word-wrap:break-word;}
 .navbtn{width:100%; height:42px; font-size:1.1rem;}
@@ -98,7 +98,7 @@ for key, default in [
     ("upload_session_dir", None),
     ("results", None),
     ("posts", None),
-    ("preview_zoom", 0.25),     # Start at 25% zoom (was 1.0 before)
+    ("preview_zoom", 0.35),     # Start at 25% zoom (was 1.0 before)
     ("include_map", {}),
 ]:
     if key not in st.session_state:
@@ -109,7 +109,7 @@ st.subheader("Preview controls")
 zc1, zc2, zc3, zc4 = st.columns([1, 1, 2, 8])
 with zc1:
     if st.button("Zoom -"):
-        st.session_state.preview_zoom = max(0.25, round(st.session_state.preview_zoom - 0.1, 2))
+        st.session_state.preview_zoom = max(0.35, round(st.session_state.preview_zoom - 0.1, 2))
 with zc2:
     if st.button("Zoom +"):
         st.session_state.preview_zoom = min(2.0, round(st.session_state.preview_zoom + 0.1, 2))
