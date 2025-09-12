@@ -37,7 +37,7 @@ class Supervisor:
             pick = self.selector(data)
             steps.append(StepResult("select_diverse", {"n_selected": len(pick)}))
             posts = self.captioner(pick)
-            steps.append(StepResult("captioner", {"n_posts": len(posts)}))
+            steps.append(StepResult("captioner", {"n_posts": len(posts), "posts": posts}))
 
             if self.cfg.get("publisher", {}).get("enabled", False):
                 self.publisher(posts)
