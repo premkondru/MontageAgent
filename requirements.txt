@@ -1,19 +1,11 @@
-# Core
 numpy
 pandas
 scikit-learn
 Pillow
 tqdm
-pyyaml
-
-# Vector & similarity
 faiss-cpu
-
-# UI
 streamlit
-
-# (Placeholders; pin in your real environment)
-# transformers
-# peft
-# torch
-# torchvision
+pyyaml
+torch
+torchvision
+open-clip-torch
