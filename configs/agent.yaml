@@ -1,10 +1,18 @@
 pipeline: [ingest, dedupe_quality, categorize, select_diverse, cluster, captioner, publisher]
 embeddings: {backend: openclip, model: ViT-B-32, pretrained: laion2b_s34b_b79k, device: cpu}
 dedupe: {method: clip, clip_threshold: 0.985, near_dup_threshold: 5}
-cluster: {use_clip: true, k: auto, max_images_per_post: 10}
-selection: {k: 48}
-publisher: {enabled: false, dry_run: true}
 categorize:
   labels: ["candid","portrait","group photo","stage","audience","speaker","award","sports","food","night","landscape","architecture","indoors","outdoors"]
   threshold: 0.28   # raise for stricter tags (e.g., 0.32–0.36)
   topk: 3
+cluster:
+  use_clip: true
+  k: auto
+  max_images_per_post: 10
+  use_label_features: true         # ← enable fusion
+  label_weight: 0.50               # ← scales label scores before concat
+  label_norm: zscore               # ← zscore | none
+  fuse_normalize: true             # ← L2-normalize fused vectors
+selection: {k: 48}
+publisher: {enabled: false, dry_run: true}
+
