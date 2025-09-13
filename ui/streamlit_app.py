@@ -76,21 +76,6 @@ def _load_font(size: int) -> ImageFont.ImageFont:
             except Exception:
                 pass
     return ImageFont.load_default()
-    """
-    Try to load a nice TTF font; fall back to PIL default.
-    """
-    candidates = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/Library/Fonts/Arial.ttf",
-    ]
-    for p in candidates:
-        if os.path.exists(p):
-            try:
-                return ImageFont.truetype(p, size=size)
-            except Exception:
-                pass
-    return ImageFont.load_default()
 
 def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
     """Greedy wrap text so that each line fits within max_width."""
@@ -221,6 +206,20 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
+# ---- Optional Event Name override ----
+st.subheader("Event Name (optional)")
+default_event = st.session_state.get("event_name_override", "")
+event_input = st.text_input(
+    "Use this in captions (leave blank to auto-derive from folders)",
+    value=default_event,
+    placeholder="e.g., IITG Orientation 2025",
+)
+st.session_state.event_name_override = event_input.strip()
+if st.session_state.event_name_override:
+    st.caption(f"Using event name: **{st.session_state.event_name_override}**")
+else:
+    st.caption("Event name: auto-derived from folders")
+
 
 # ---------- Upload images ----------
 st.subheader("Upload images (optional)")
@@ -268,6 +267,12 @@ if run_clicked:
     if use_upload_only and st.session_state.upload_session_dir:
         runtime_cfg["ingest"]["dirs"] = [st.session_state.upload_session_dir]
 
+
+    # >>> NEW: forward the Event Name override to the captioner
+    #if st.session_state.get("event_name_override"):
+    runtime_cfg.setdefault("captioner", {})
+    runtime_cfg["captioner"]["event_name_override"] = st.session_state["event_name_override"]
+
     sup = Supervisor(runtime_cfg)
     results = sup.run()
     st.session_state.results = results
@@ -305,7 +310,7 @@ if posts:
             st.session_state.preview_zoom = min(2.0, round(st.session_state.preview_zoom + 0.1, 2))
     # with zc3:
     #    if st.button("R"):
-            st.session_state.preview_zoom = 1.0
+    #        st.session_state.preview_zoom = 1.0
     with zc4:
         st.write(f"**{int(st.session_state.preview_zoom * 100)}%**")
 
@@ -345,6 +350,7 @@ if posts:
             cprev, cnext = st.columns([1, 1])
             prev_clicked = cprev.button("◀", key=f"prev_{idx}", use_container_width=True, disabled=(n_included < 2))
             next_clicked = cnext.button("▶", key=f"next_{idx}", use_container_width=True, disabled=(n_included < 2))
+            #st.caption(f"{st.session_state[cur_key]} / {n_included}")
 
         if n_included > 0:
             if prev_clicked:

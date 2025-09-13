@@ -20,6 +20,8 @@ class Captioner:
         self.cap_cfg = (cfg.get("captioner") or {})
         self.emb_cfg = (cfg.get("embeddings") or {})
 
+        self.event_name_override = (self.cap_cfg.get("event_name_override") or "").strip()
+
         # CLIP setup (for retrieval + CLIPScore)
         self.model = self.emb_cfg.get("model", "ViT-B-32")
         self.pretrained = self.emb_cfg.get("pretrained", "laion2b_s34b_b79k")
@@ -61,7 +63,12 @@ class Captioner:
         posts = []
         for cl in clusters:
             paths = [m["path"] for m in cl["items"]]
-            event_name = self._derive_event_name(cl["items"])
+            # OLD:
+            # event_name = self._derive_event_name(cl["items"])
+
+            # NEW:
+            event_name = self.event_name_override or self._derive_event_name(cl["items"])
+
             top_labels = self._aggregate_labels(cl["items"], topk=3)
 
             # RAG: stylistic hints from past captions
@@ -98,9 +105,11 @@ class Captioner:
                 "clipscore_median": float(round(float(np.median(means)), 4)),
                 "clipscore_min": float(round(float(means.min()), 4)),
                 "clipscore_max": float(round(float(means.max()), 4)),
+                "event_override": self.event_name_override,
             }
         else:
-            self.last_metrics = {"clipscore_mean": None}
+            self.last_metrics = {"clipscore_mean": None, "event_override": self.event_name_override}
+
         return posts
 
     # ---------- caption building ----------
