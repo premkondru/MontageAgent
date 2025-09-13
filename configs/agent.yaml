@@ -15,10 +15,10 @@ cluster:
   fuse_normalize: true             # ← L2-normalize fused vectors
   selection: {k: 48}
 captioner:
-  mode: "blip2"          # "template" (now) | "blip2" (optional future)
+  mode: "template"          # "template" (now) | "blip2" (optional future)
   adapter_path: "checkpoints/lora_blip2_montage/best"
   max_hashtags: 15
-  include_swipe_hint: true
+  include_swipe_hint: false
   calc_clipscore: true   # compute cosine(img, caption) scores
   openers:
     - "Highlights from"
