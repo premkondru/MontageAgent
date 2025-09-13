@@ -29,6 +29,9 @@ class Captioner:
 
         # --- LoRA/BLIP-2 captioner knobs ---
         self.mode = (self.cap_cfg.get("mode") or "template").lower()
+        self.montage_max_tiles = int(self.cap_cfg.get("montage_max_tiles", 9))
+        self.montage_tile_px   = int(self.cap_cfg.get("montage_tile_px", 384))
+
         # BLIP-2 base model (separate from CLIP!)
         self.blip2_base = (
             self.cap_cfg.get("base_model")
@@ -169,13 +172,66 @@ class Captioner:
 
         processor, model = self._blip
         try:
-            img_path = paths[len(paths) // 2]
+            # Build montage over all (or up to K) cluster images
+            sel = self._select_representative_paths(paths, k=self.montage_max_tiles)
+            montage = self._build_montage(sel, tile_px=self.montage_tile_px)
+            if montage is None:
+                return None
+
+            label_str = ", ".join(labels) if labels else "event moments"
+            style_tail = hints.get("style_tail", "")
+            topic = f"about '{event}'" if event else "for a college event"
+            prompt = (
+                f"Write a short Instagram caption for a college photography club post"
+                f" starting with the words '{event}'. Do not use any other proper nouns."
+            ).strip()
+            prompt = (
+                f'Task: Write a 3 to 5 words Instagram caption starting with the words "{event}" for a college photography club\n'
+                "Constraints:\n"
+                f'- The ONLY proper noun you may use is the exact event name string: "{event}".\n'
+                "- Do NOT invent or include any other names: no people, venues, cities, brands, organizations, or handles.\n"
+                "- No hashtags. No emojis.\n"
+                f"Focus topics: {label_str}\n\n"
+            ).strip()
+    
+            print(f"Prompt={prompt}")
+
+            inputs = processor(images=montage, text=prompt, return_tensors="pt").to(model.device)
+            gen = model.generate(
+                **inputs,
+                max_new_tokens=int(self.cfg.get("infer", {}).get("max_new_tokens", 48)),
+                temperature=float(self.cfg.get("infer", {}).get("temperature", 0.7)),
+                top_p=float(self.cfg.get("infer", {}).get("top_p", 0.9)),
+                do_sample=True,
+            )
+            text = processor.batch_decode(gen, skip_special_tokens=True)[0].strip()
+            if self.cfg.get("infer", {}).get("no_hashtags", True):
+                text = " ".join([w for w in text.split() if not w.startswith("#")]).strip()
+            print(f"BLIP2 caption: {text}")
+            return text
+        except Exception:
+            return None
+
+    def _caption_via_blip2_singleimage(self, paths, event, labels, hints):
+        try:
+            from PIL import Image
+        except Exception:
+            return None
+
+        if self._blip is None:
+            self._blip = self._load_blip2_lora()
+        if self._blip is None:
+            return None
+
+        processor, model = self._blip
+        try:
+            img_path = paths[0]
             image = Image.open(img_path).convert("RGB")
             label_str = ", ".join(labels) if labels else "event moments"
             style_tail = hints.get("style_tail", "")
             prompt = (
                 f"Write a short Instagram caption for a college photography club post about '{event}'. "
-                f"Focus on: {label_str}. Keep it natural and clean. No hashtags. {style_tail}"
+                f"Focus on: {label_str}. Keep it natural and clean. No hashtags. No proper nouns"
             ).strip()
 
             inputs = processor(images=image, text=prompt, return_tensors="pt").to(model.device)
@@ -304,3 +360,46 @@ class Captioner:
             }
         except Exception:
             return None
+
+    def _select_representative_paths(self, paths: List[str], k: int) -> List[str]:
+        """Evenly sample up to k paths across the sequence."""
+        if not paths:
+            return []
+        if len(paths) <= k:
+            return paths
+        idxs = np.linspace(0, len(paths) - 1, num=k, dtype=int).tolist()
+        return [paths[i] for i in idxs]
+
+    def _build_montage(self, paths: List[str], tile_px: int = 384):
+        """Return a PIL.Image grid (white bg) of the given image paths."""
+        from PIL import Image
+        imgs = []
+        for p in paths:
+            try:
+                im = Image.open(p).convert("RGB")
+                # center-crop to square then resize
+                w, h = im.size
+                if w != h:
+                    if w > h:
+                        left = (w - h) // 2
+                        im = im.crop((left, 0, left + h, h))
+                    else:
+                        top = (h - w) // 2
+                        im = im.crop((0, top, w, top + w))
+                im = im.resize((tile_px, tile_px), Image.LANCZOS)
+                imgs.append(im)
+            except Exception:
+                continue
+        if not imgs:
+            return None
+        n = len(imgs)
+        cols = int(np.ceil(np.sqrt(n)))
+        rows = int(np.ceil(n / cols))
+        W, H = cols * tile_px, rows * tile_px
+        canvas = Image.new("RGB", (W, H), "white")
+        for i, im in enumerate(imgs):
+            r, c = divmod(i, cols)
+            canvas.paste(im, (c * tile_px, r * tile_px))
+        return canvas
+
+    # ---------- recent edits ----------
