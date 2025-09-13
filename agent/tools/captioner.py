@@ -38,6 +38,7 @@ class Captioner:
         self._past_texts = [p.get("caption","") for p in self._past]
         # Pre-embed past captions for fast retrieval
         self._past_txt_emb = encode_texts(self._past_texts, self.model, self.pretrained, self.device) if self._past_texts else None
+        self.calc_clipscore = bool(self.cap_cfg.get("calc_clipscore", True))
 
     # ---------- public API ----------
     def __call__(self, clusters: List[Dict[str, Any]], cluster_mode: bool = True) -> List[Dict[str, Any]]:
@@ -60,13 +61,27 @@ class Captioner:
 
             # Derive hashtags
             hashtags = self._build_hashtags(top_labels, hints)
+            clipscore = self._clipscore(paths, caption) if self.calc_clipscore else None
             posts.append({
                 "images": paths,
                 "caption": caption,
                 "hashtags": hashtags,
-                "labels": list(top_labels),   # expose for UI
-                "cluster_id": int(cl.get("cluster_id", 0))
+                "labels": list(top_labels),
+                "cluster_id": int(cl.get("cluster_id", 0)),
+                "clipscore": clipscore,   # ← NEW
             })
+        # Aggregate CLIPScores across posts (for the debug panel)
+        means = [p["clipscore"]["mean"] for p in posts if p.get("clipscore") and p["clipscore"].get("mean") is not None]
+        if means:
+            means = np.array(means, dtype="float32")
+            self.last_metrics = {
+                "clipscore_mean": float(round(float(means.mean()), 4)),
+                "clipscore_median": float(round(float(np.median(means)), 4)),
+                "clipscore_min": float(round(float(means.min()), 4)),
+                "clipscore_max": float(round(float(means.max()), 4)),
+            }
+        else:
+            self.last_metrics = {"clipscore_mean": None}
         return posts
 
     # ---------- caption building ----------
@@ -206,3 +221,33 @@ class Captioner:
                 except Exception:
                     pass
         return rows
+
+    def _clipscore(self, paths, caption: str):
+        """
+        Return per-image cosine(img, text) scores and aggregates.
+        - Uses normalized CLIP embeddings (so dot == cosine).
+        """
+        try:
+            if not caption or not paths:
+                return None
+            img_emb = encode_paths(paths, self.model, self.pretrained, self.device)  # [N, D], L2-normalized
+            if img_emb.size == 0:
+                return None
+            txt_emb = encode_texts([caption], self.model, self.pretrained, self.device)[0]  # [D], L2-normalized
+
+            per_image = (img_emb @ txt_emb).astype("float32")  # [N]
+            mean_dot = float(per_image.mean())
+
+            # mean-of-embeddings variant
+            mean_img = img_emb.mean(axis=0)
+            nrm = np.linalg.norm(mean_img) + 1e-8
+            mean_img = mean_img / nrm
+            mean_img_dot = float(mean_img @ txt_emb)
+
+            return {
+                "per_image": per_image.tolist(),
+                "mean": round(mean_dot, 4),
+                "mean_img": round(mean_img_dot, 4),
+            }
+        except Exception:
+            return None

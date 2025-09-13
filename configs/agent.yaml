@@ -18,6 +18,7 @@ captioner:
   mode: "template"          # "template" (now) | "blip2" (optional future)
   max_hashtags: 15
   include_swipe_hint: true
+  calc_clipscore: true   # compute cosine(img, caption) scores
   openers:
     - "Highlights from"
     - "Moments from"

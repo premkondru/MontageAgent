@@ -46,12 +46,13 @@ class Supervisor:
             posts = self.captioner(clusters, cluster_mode=True)
 
             # Include label_index in the captioner step result
-            S.append(StepResult('captioner', {
-                'n_posts': len(posts),
-                'posts': posts,
-                'label_index': label_index      # <- NEW
+            cap_metrics = getattr(self.captioner, "last_metrics", {})
+            S.append(StepResult("captioner", {
+                "n_posts": len(posts),
+                "posts": posts,
+                "label_index": label_index,   # if you already added this earlier
+                **cap_metrics                 # ← shows in Streamlit "Pipeline step outputs"
             }))
-            posts=self.captioner(clusters, cluster_mode=True); S.append(StepResult('captioner',{'n_posts':len(posts),'posts':posts}))
             if self.cfg.get('publisher',{}).get('enabled',False):
                 self.publisher(posts); S.append(StepResult('publisher',{'status':'queued/published'}))
             return S
