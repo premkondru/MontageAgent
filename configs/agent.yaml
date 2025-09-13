@@ -10,7 +10,7 @@ cluster:
   k: auto
   max_images_per_post: 10
   use_label_features: true         # ← enable fusion
-  label_weight: 0.50               # ← scales label scores before concat
+  label_weight: 0.35               # ← scales label scores before concat
   label_norm: zscore               # ← zscore | none
   fuse_normalize: true             # ← L2-normalize fused vectors
 selection: {k: 48}

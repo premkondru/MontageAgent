@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from PIL import Image
 from agent.tools.clip_features import encode_paths, encode_texts
+from sklearn.metrics import silhouette_score
 
 _DEFAULT_LABELS = [
     "candid","portrait","group photo","stage","audience","speaker",
@@ -92,13 +93,35 @@ class Clusterer:
             k=self._auto_k(len(items))
 
         if k==1:
+            # No silhouette for a single cluster
+            self.last_metrics = {"k": 1, "fused": bool(self.use_label_features)}
             return [{'cluster_id':0,'items':items[:self.maxk]}]
 
-        km=KMeans(n_clusters=k, n_init=10, random_state=42)
-        labels=km.fit_predict(X)
+        km = KMeans(n_clusters=k, n_init=10, random_state=42)
+        y = km.fit_predict(X)
 
+        # --- Quick silhouette score (cosine; fallback to euclidean) ---
+        sil = None
+        try:
+            if len(set(y)) > 1 and len(items) > len(set(y)):
+                try:
+                    sil = silhouette_score(X, y, metric="cosine")
+                except Exception:
+                    sil = silhouette_score(X, y)  # euclidean fallback
+        except Exception:
+            sil = None
+
+        if sil is not None:
+            sil = float(round(sil, 3))
+            print(f"[cluster] k={k} fused={self.use_label_features} silhouette={sil}")
+            self.last_metrics = {"k": k, "fused": bool(self.use_label_features), "silhouette": sil}
+        else:
+            self.last_metrics = {"k": k, "fused": bool(self.use_label_features), "silhouette": None}
+
+        # Build clusters
         clusters=[]
         for cid in range(k):
-            mem=[items[i] for i,l in enumerate(labels) if l==cid][:self.maxk]
+            mem=[items[i] for i,lab in enumerate(y) if lab==cid][:self.maxk]
             clusters.append({'cluster_id':cid,'items':mem})
         return clusters
+

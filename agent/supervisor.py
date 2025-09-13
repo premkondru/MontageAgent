@@ -34,7 +34,8 @@ class Supervisor:
             data=self.categorizer(data); S.append(StepResult('categorize',{'n_items':len(data)}))
             pick=self.selector(data); S.append(StepResult('select_diverse',{'n_selected':len(pick)}))
             clusters=self.clusterer(pick); 
-            S.append(StepResult('cluster', {'n_clusters': len(clusters)}))
+            metrics = getattr(self.clusterer, 'last_metrics', {})
+            S.append(StepResult('cluster', {'n_clusters': len(clusters), **metrics}))
             # NEW: build a per-image label index so the UI can show labels under thumbnails
             label_index = {}
             for cl in clusters:
