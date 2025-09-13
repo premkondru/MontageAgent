@@ -33,7 +33,23 @@ class Supervisor:
             data=self.dq(data); S.append(StepResult('dedupe_quality',{'n_items':len(data)}))
             data=self.categorizer(data); S.append(StepResult('categorize',{'n_items':len(data)}))
             pick=self.selector(data); S.append(StepResult('select_diverse',{'n_selected':len(pick)}))
-            clusters=self.clusterer(pick); S.append(StepResult('cluster',{'n_clusters':len(clusters)}))
+            clusters=self.clusterer(pick); 
+            S.append(StepResult('cluster', {'n_clusters': len(clusters)}))
+            # NEW: build a per-image label index so the UI can show labels under thumbnails
+            label_index = {}
+            for cl in clusters:
+                for it in cl['items']:
+                    label_index[it['path']] = it.get('labels', [])
+
+            # Captioning (posts)
+            posts = self.captioner(clusters, cluster_mode=True)
+
+            # Include label_index in the captioner step result
+            S.append(StepResult('captioner', {
+                'n_posts': len(posts),
+                'posts': posts,
+                'label_index': label_index      # <- NEW
+            }))
             posts=self.captioner(clusters, cluster_mode=True); S.append(StepResult('captioner',{'n_posts':len(posts),'posts':posts}))
             if self.cfg.get('publisher',{}).get('enabled',False):
                 self.publisher(posts); S.append(StepResult('publisher',{'status':'queued/published'}))

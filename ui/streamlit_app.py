@@ -214,6 +214,7 @@ for key, default in [
     ("upload_session_dir", None),
     ("results", None),
     ("posts", None),
+    ("label_index", {}),       # <- NEW
     ("preview_zoom", 0.25),     # Start small
     ("include_map", {}),
 ]:
@@ -272,11 +273,14 @@ if run_clicked:
     st.session_state.results = results
 
     posts = None
+    label_index = {}
     for r in results:
         if r.name == "captioner" and isinstance(r.output, dict) and "posts" in r.output:
             posts = r.output["posts"]
+            label_index = r.output.get("label_index", {})   # <- NEW
             break
     st.session_state.posts = posts
+    st.session_state.label_index = label_index 
 
 # Optional debug
 if st.session_state.results:
@@ -365,13 +369,14 @@ if posts:
                 st.info(f"(Missing file) {cur_img_path}")
 
         # Thumbnails — tighter packing, 1/4 size of previous (216x270 -> 54x68)
+        # Thumbnails — tiny + packed; show labels beneath each thumbnail
         st.write("**Thumbnails**")
         thumbs_per_row = 3
-        thumb_w, thumb_h = 108, 135  # 1/2 of 216x270
+        thumb_w, thumb_h = 108, 135  # quarter-size thumbs
+        label_index = st.session_state.get("label_index", {}) or {}
 
         for start in range(0, n, thumbs_per_row):
             row_paths = images[start:start+thumbs_per_row]
-            # Use small gap if available; fall back if Streamlit < 1.25
             try:
                 cols = st.columns(len(row_paths), gap=None)
             except TypeError:
@@ -379,15 +384,19 @@ if posts:
             for j, img_path in enumerate(row_paths):
                 with cols[j]:
                     try:
-                        # Reuse IG crop, then shrink to tiny thumb
                         thumb = resize_for_instagram(img_path).resize((thumb_w, thumb_h), Image.LANCZOS)
-                        # No caption to save vertical space
                         st.image(thumb)
                     except Exception:
                         st.info("(thumb unavailable)")
-                    # Include/Exclude toggle (kept; shortest label helps packing)
+
+                    # NEW: labels under the thumbnail
+                    labs = label_index.get(img_path, [])
+                    st.caption(", ".join(labs) if labs else "—")
+
+                    # Include/Exclude toggle
                     ck = st.checkbox("Include", value=inc.get(img_path, True), key=f"inc_{idx}_{start+j}")
                     inc[img_path] = ck
+
 
         st.markdown('</div>', unsafe_allow_html=True)
         st.divider()
