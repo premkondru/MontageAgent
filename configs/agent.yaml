@@ -13,6 +13,28 @@ cluster:
   label_weight: 0.35               # ← scales label scores before concat
   label_norm: zscore               # ← zscore | none
   fuse_normalize: true             # ← L2-normalize fused vectors
-selection: {k: 48}
+  selection: {k: 48}
+captioner:
+  mode: "template"          # "template" (now) | "blip2" (optional future)
+  max_hashtags: 15
+  include_swipe_hint: true
+  openers:
+    - "Highlights from"
+    - "Moments from"
+    - "Scenes from"
+    - "Snapshots of"
+  base_hashtags: ["#IITGuwahati", "#Montage", "#PhotographyClub"]
+  label_hashtags:          # extend as you like
+    "portrait": ["#Portrait", "#Faces"]
+    "group photo": ["#GroupShot", "#Team"]
+    "stage": ["#Stage", "#Concert", "#Live"]
+    "audience": ["#Audience", "#Vibes"]
+    "speaker": ["#Speaker", "#Talk"]
+    "award": ["#Awards", "#Winners"]
+    "sports": ["#Sports", "#Action"]
+    "food": ["#Food", "#Treats"]
+    "night": ["#Night", "#LowLight"]
+    "indoors": ["#Indoors"]
+    "outdoors": ["#Outdoors"]
 publisher: {enabled: false, dry_run: true}
 
