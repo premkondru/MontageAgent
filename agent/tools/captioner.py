@@ -25,7 +25,11 @@ class Captioner:
         self.device = self.emb_cfg.get("device", "cpu")
 
         # Behavior knobs
-        self.mode = (self.cap_cfg.get("mode") or "template").lower()
+        self.mode = (self.cap_cfg.get("mode") or "template").lower()   # already present
+        self.adapter_path = (self.cfg.get("captioner", {}) or {}).get("adapter_path") \
+                    or (self.cfg.get("infer", {}) or {}).get("adapter_path") \
+                    or "checkpoints/lora_blip2_montage/best"
+        self._blip = None  # lazy cache: (processor, model)
         self.max_hashtags = int(self.cap_cfg.get("max_hashtags", 15))
         self.include_swipe_hint = bool(self.cap_cfg.get("include_swipe_hint", True))
         self.openers = self.cap_cfg.get("openers") or ["Highlights from"]
@@ -101,20 +105,59 @@ class Captioner:
         text = " ".join(pieces).replace("  ", " ").strip()
         return text
 
-    def _caption_via_blip2(self, paths: List[str], event: str, labels: List[str], hints: Dict[str, Any]) -> str:
-        """
-        Placeholder for a BLIP-2 LoRA model (see configs/lora_blip2.yaml).
-        Return None to fall back to template if transformers pipeline not available.
-        """
+    def _load_blip2_lora(self):
+        if self._blip is not None:
+            return self._blip
+        from transformers import AutoProcessor, Blip2ForConditionalGeneration
+        from peft import PeftModel
+        base = self.model
+        processor = AutoProcessor.from_pretrained(base)
+        base_model = Blip2ForConditionalGeneration.from_pretrained(
+            base,
+            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            device_map={"":0} if torch.cuda.is_available() else None,
+            load_in_8bit=False, load_in_4bit=False
+        )
+        if os.path.isdir(self.adapter_path):
+            model = PeftModel.from_pretrained(base_model, self.adapter_path)
+        else:
+            # fallback to base if adapter missing
+            model = base_model
+        model.eval()
+        self._blip = (processor, model)
+        return self._blip
+
+    def _caption_via_blip2(self, paths, event, labels, hints):
         try:
             import torch
-            from transformers import Blip2ForConditionalGeneration, AutoProcessor
+            from PIL import Image
         except Exception:
-            return None  # transformers not installed
+            return None
+        try:
+            processor, model = self._load_blip2_lora()
+            # pick a representative image (middle) for speed; you can sample 2–3 and concatenate prompts
+            img_path = paths[len(paths)//2]
+            image = Image.open(img_path).convert("RGB")
+            label_str = ", ".join(labels) if labels else "event moments"
+            style_tail = hints.get("style_tail","")
+            prompt = f"Write a short Instagram caption for a college photography club post about '{event}'. " \
+                    f"Focus on: {label_str}. Keep it natural and clean. No hashtags. {style_tail}".strip()
+            inputs = processor(images=image, text=prompt, return_tensors="pt").to(model.device)
+            gen = model.generate(
+                **inputs,
+                max_new_tokens=int(self.cfg.get("infer",{}).get("max_new_tokens", 48)),
+                temperature=float(self.cfg.get("infer",{}).get("temperature", 0.7)),
+                top_p=float(self.cfg.get("infer",{}).get("top_p", 0.9)),
+                do_sample=True
+            )
+            text = processor.batch_decode(gen, skip_special_tokens=True)[0].strip()
+            # Post-process
+            if (self.cfg.get("infer",{}).get("no_hashtags", True)):
+                text = " ".join([w for w in text.split() if not w.startswith("#")]).strip()
+            return text
+        except Exception:
+            return None
 
-        # NOTE: This is a lightweight sketch; you can load your LoRA-adapted weights here.
-        # For now, prefer the template for speed/reliability unless you add the model.
-        return None
 
     # ---------- hashtags ----------
     def _build_hashtags(self, labels: List[str], hints: Dict[str, Any]) -> List[str]:

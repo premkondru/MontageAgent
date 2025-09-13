@@ -21,12 +21,22 @@ pip-wheel-metadata/
 *.tmp
 *.bak
 
-# --- Environments ---
+# --- Environments (any depth) ---
+# virtualenvs
+.venv
 .venv/
+**/.venv/**
+venv
 venv/
+**/venv/**
+env
 env/
-.env
-.env.*
+**/env/**
+
+# pyenv & poetry
+.python-version
+.pyproject-venv/
+**/.python_venv/**
 
 # --- Notebooks ---
 .ipynb_checkpoints/

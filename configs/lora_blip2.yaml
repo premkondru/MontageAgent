@@ -1,3 +1,29 @@
-model: {base: blip2-flan-t5-base, lora: {r:16, alpha:32, dropout:0.05}}
-train: {epochs:3, batch_size:8, lr:1e-4, scheduler:cosine, seed:42}
-data: {images_dir: data/events, captions_file: data/style/past_captions.jsonl, val_split: 0.1}
+base_model: "Salesforce/blip2-flan-t5-xl"   # alt: blip2-flan-t5-xxl (needs more VRAM)
+quantization: "bnb_8bit"                    # none | bnb_8bit | bnb_4bit
+lora:
+  r: 16
+  alpha: 16
+  dropout: 0.05
+  target_modules: ["q", "k", "v", "o"]     # attention proj layers in T5 blocks
+train:
+  train_jsonl: "data/style/train_captioning.jsonl"
+  val_jsonl:   "data/style/val_captioning.jsonl"
+  image_root:  "data/trainingevents"               # base for relative image paths
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  gradient_accumulation_steps: 8
+  lr: 2e-4
+  warmup_ratio: 0.05
+  weight_decay: 0.01
+  max_steps: -1
+  max_seq_len: 96
+  save_every_steps: 1000
+  output_dir: "checkpoints/lora_blip2_montage"
+infer:
+  adapter_path: "checkpoints/lora_blip2_montage/last"
+  max_new_tokens: 48
+  temperature: 0.7
+  top_p: 0.9
+  no_hashtags: true
+  emoji_ok: true
