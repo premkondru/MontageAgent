@@ -15,7 +15,7 @@ cluster:
   fuse_normalize: true             # ← L2-normalize fused vectors
   selection: {k: 48}
 captioner:
-  mode: "template"          # "template" (now) | "blip2" (optional future)
+  mode: "blip2"          # "template" (now) | "blip2" (optional future)
   montage_max_tiles: 9     # how many images to pack into the grid
   montage_tile_px: 384     # tile size (px) before packing
   adapter_path: "checkpoints/lora_blip2_montage/best"
