@@ -196,9 +196,7 @@ if cfg_path.exists():
 
 # ---------- Run config (sidebar) ----------
 with st.sidebar:
-    st.header("Run Config")
-
-
+    st.header("Configurations")
     # 1) Categorize: labels
     default_labels = []
     # prefill from file config if available
@@ -207,7 +205,7 @@ with st.sidebar:
     except Exception:
         pass
     labels_text = st.text_area(
-        "Labels (comma or newline separated)",
+        "Labels (, or /n separated)",
         value="\n".join(default_labels) if default_labels else "stage\naudience\nspeaker\ngroup photo\nportrait\nnight\naward\nsports\nfood\nindoors\noutdoors\ncandid",
         height=140,
         help="These are used by the categorizer/labeler (CLIP zero-shot).",
