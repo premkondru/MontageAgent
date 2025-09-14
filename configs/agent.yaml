@@ -1,27 +1,28 @@
 pipeline: [ingest, dedupe_quality, categorize, select_diverse, cluster, captioner, publisher]
 embeddings: {backend: openclip, model: ViT-B-32, pretrained: laion2b_s34b_b79k, device: cpu}
-dedupe: {method: clip, clip_threshold: 0.985, near_dup_threshold: 5}
+dedupe: {method: clip, clip_threshold: 0.800, near_dup_threshold: 5}
 categorize:
-  labels: ["candid","portrait","group photo","stage","audience","speaker","award","sports","food","night","landscape","architecture","indoors","outdoors"]
-  threshold: 0.28   # raise for stricter tags (e.g., 0.32–0.36)
+  #labels: ["candid","portrait","group photo","stage","audience","speaker","award","sports","food","night","landscape","architecture","indoors","outdoors"]
+  labels: ["group photo","people","nature","Lord Ganesha","food","night","landscape","indoors","outdoors","person"]
+  threshold: 0.40   # raise for stricter tags (e.g., 0.32–0.36)
   topk: 3
 cluster:
   use_clip: true
   k: auto
-  max_images_per_post: 10
-  use_label_features: true         # ← enable fusion
+  max_images_per_post: 6
+  use_label_features: false         # ← enable fusion
   label_weight: 0.35               # ← scales label scores before concat
   label_norm: zscore               # ← zscore | none
   fuse_normalize: true             # ← L2-normalize fused vectors
   selection: {k: 48}
 captioner:
-  mode: "blip2"          # "template" (now) | "blip2" (optional future)
-  montage_max_tiles: 9     # how many images to pack into the grid
-  montage_tile_px: 384     # tile size (px) before packing
+  mode: "template"          # "template" (now) | "blip2" (optional future)
+  montage_max_tiles: 9      # how many images to pack into the grid
+  montage_tile_px: 384      # tile size (px) before packing
   adapter_path: "checkpoints/lora_blip2_montage/best"
   max_hashtags: 15
   include_swipe_hint: false
-  calc_clipscore: true   # compute cosine(img, caption) scores
+  calc_clipscore: true      # compute cosine(img, caption) scores
   openers:
     - "Highlights from"
     - "Moments from"

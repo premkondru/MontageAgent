@@ -194,35 +194,79 @@ if cfg_path.exists():
     with open(cfg_path, "r") as f:
         cfg = yaml.safe_load(f) or {}
 
+# ---------- Run config (sidebar) ----------
+with st.sidebar:
+    st.header("Run Config")
+
+
+    # 1) Categorize: labels
+    default_labels = []
+    # prefill from file config if available
+    try:
+        default_labels = (cfg.get("categorize", {}) or {}).get("labels", [])
+    except Exception:
+        pass
+    labels_text = st.text_area(
+        "Labels (comma or newline separated)",
+        value="\n".join(default_labels) if default_labels else "stage\naudience\nspeaker\ngroup photo\nportrait\nnight\naward\nsports\nfood\nindoors\noutdoors\ncandid",
+        height=140,
+        help="These are used by the categorizer/labeler (CLIP zero-shot).",
+    )
+    #ui_labels = [x.strip() for x in re.split(r"[,\\n]+", labels_text) if x.strip()]
+    ui_labels = [x.strip() for x in re.split(r"[,\n\r]+", labels_text) if x.strip()]
+
+    # 2) Cluster: max images per post
+    max_imgs_default = int((cfg.get("clusterer", {}) or {}).get("max_images_per_post", 10))
+    ui_max_images = st.slider(
+        "Max images per post (cluster cap)",
+        min_value=1, max_value=10, value=6, step=1,
+        help="Upper bound of images that will be kept per clustered post."
+    )
+
+    # 3) Captioner: mode
+    cap_mode_default = (cfg.get("captioner", {}) or {}).get("mode", "template")
+    ui_cap_mode = st.selectbox(
+        "Captioner mode",
+        options=["template", "blip2"],
+        index=0 if str(cap_mode_default).lower() == "template" else 1,
+        help="Use 'blip2' to enable the (optional) LoRA/BLIP-2 captioner."
+    )
+
+    # 4) Preview zoom zc1, zc2, zc4 = st.columns([1, 1, 4])
+    st.session_state.preview_zoom = st.slider(
+        "Preview Zoom Level",
+        min_value=0.25, max_value=1.00, value=0.35, step=0.05,
+        help="Preview zoom level of the Instagram Posts"
+    )
+   
+    if st.button("Clear Preview"):
+        st.session_state.results = None
+        st.session_state.posts = None
+        st.session_state.include_map = {}
+
 # ---------- Persistent state ----------
 for key, default in [
     ("upload_session_dir", None),
     ("results", None),
     ("posts", None),
     ("label_index", {}),       # <- NEW
-    ("preview_zoom", 0.25),     # Start small
+    ("preview_zoom", 0.35),     # Start small
     ("include_map", {}),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
-# ---- Optional Event Name override ----
-st.subheader("Event Name (optional)")
+# ---------- Event Name ----------
 default_event = st.session_state.get("event_name_override", "")
 event_input = st.text_input(
-    "Use this in captions (leave blank to auto-derive from folders)",
+    "Event Name",
     value=default_event,
     placeholder="e.g., IITG Orientation 2025",
+    help="Default is the name of the folder where the images are uploaded"
 )
 st.session_state.event_name_override = event_input.strip()
-if st.session_state.event_name_override:
-    st.caption(f"Using event name: **{st.session_state.event_name_override}**")
-else:
-    st.caption("Event name: auto-derived from folders")
-
 
 # ---------- Upload images ----------
-st.subheader("Upload images (optional)")
 uploads = st.file_uploader(
     "Drop JPG/PNG files",
     type=["jpg", "jpeg", "png"],
@@ -251,15 +295,7 @@ if uploads:
 
 # ---------- Actions ----------
 use_upload_only = st.checkbox("Use only current upload session", value=False)
-c1, c2, c3 = st.columns([2, 3, 5])
-with c1:
-    run_clicked = st.button("Run Pipeline", type="primary")
-with c2:
-    if st.button("Clear Preview"):
-        st.session_state.results = None
-        st.session_state.posts = None
-        st.session_state.include_map = {}
-
+run_clicked = st.button("Run Pipeline", type="primary")
 # Run pipeline on demand
 if run_clicked:
     runtime_cfg = dict(cfg)
@@ -268,9 +304,15 @@ if run_clicked:
         runtime_cfg["ingest"]["dirs"] = [st.session_state.upload_session_dir]
 
 
-    # >>> NEW: forward the Event Name override to the captioner
-    #if st.session_state.get("event_name_override"):
+    # ---- inject UI config into runtime cfg ----
+    runtime_cfg.setdefault("categorize", {})
+    runtime_cfg["categorize"]["labels"] = ui_labels
+
+    runtime_cfg.setdefault("cluster", {})
+    runtime_cfg["cluster"]["max_images_per_post"] = int(ui_max_images)
+
     runtime_cfg.setdefault("captioner", {})
+    runtime_cfg["captioner"]["mode"] = str(ui_cap_mode).lower()
     runtime_cfg["captioner"]["event_name_override"] = st.session_state["event_name_override"]
 
     sup = Supervisor(runtime_cfg)
@@ -300,112 +342,93 @@ if st.session_state.results:
 # ---------- Preview posts ----------
 posts = st.session_state.posts
 if posts:
-    st.subheader("Preview Posts (per cluster)")
-    zc1, zc2, zc4 = st.columns([1, 1, 4])
-    with zc1:
-        if st.button("ZOOM-"):
-            st.session_state.preview_zoom = max(0.25, round(st.session_state.preview_zoom - 0.1, 2))
-    with zc2:
-        if st.button("ZOOM+"):
-            st.session_state.preview_zoom = min(2.0, round(st.session_state.preview_zoom + 0.1, 2))
-    # with zc3:
-    #    if st.button("R"):
-    #        st.session_state.preview_zoom = 1.0
-    with zc4:
-        st.write(f"**{int(st.session_state.preview_zoom * 100)}%**")
-
-    for idx, p in enumerate(posts):
-        images = [ip for ip in (p.get("images") or []) if isinstance(ip, str)]
-        n = len(images)
-
-        # include/exclude map
-        inc = st.session_state.include_map.get(idx)
-        if inc is None:
-            inc = {path: True for path in images}
-            st.session_state.include_map[idx] = inc
-        else:
-            for path in images:
-                inc.setdefault(path, True)
-
-        included = [path for path in images if inc.get(path, True)]
-        n_included = len(included)
-
-        st.markdown('<div class="post-card">', unsafe_allow_html=True)
-        st.markdown(f"**Post {idx+1}** — {n_included} selected / {n} total photo(s)")
-
-        if n == 0:
-            st.warning("This cluster contains no previewable images.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            st.divider()
-            continue
-
-        # Per-cluster index
-        cur_key = f"car_{idx}"
-        if cur_key not in st.session_state:
-            st.session_state[cur_key] = 1
-
-        # NAV ROW (buttons side-by-side on the left)
-        left_controls, _spacer = st.columns([2, 8])
-        with left_controls:
-            cprev, cnext = st.columns([1, 1])
-            prev_clicked = cprev.button("◀", key=f"prev_{idx}", use_container_width=True, disabled=(n_included < 2))
-            next_clicked = cnext.button("▶", key=f"next_{idx}", use_container_width=True, disabled=(n_included < 2))
-            #st.caption(f"{st.session_state[cur_key]} / {n_included}")
-
-        if n_included > 0:
-            if prev_clicked:
-                st.session_state[cur_key] = 1 if (st.session_state[cur_key] - 1) < 1 else (st.session_state[cur_key] - 1)
-            if next_clicked:
-                st.session_state[cur_key] = n_included if (st.session_state[cur_key] + 1) > n_included else (st.session_state[cur_key] + 1)
-
-        # Compose and show IG-like card
-        if n_included == 0:
-            st.info("No images selected. Use the checkboxes below to include images in this post.")
-        else:
-            st.session_state[cur_key] = max(1, min(st.session_state[cur_key], n_included))
-            cur_img_path = included[st.session_state[cur_key] - 1]
-            if os.path.exists(cur_img_path):
-                base = resize_for_instagram(cur_img_path)
-                # Clean caption (no inline hashtags)
-                clean_caption = strip_hashtags(p.get("caption", ""))
-                card = compose_ig_card(base, clean_caption, p.get("hashtags", []))
-                zoomed = apply_zoom(card, st.session_state.preview_zoom)
-                st.image(zoomed)
+    #st.subheader("Preview Posts (per cluster)")
+    with st.expander("Preview Posts (per cluster)", expanded=True):
+        for idx, p in enumerate(posts):
+            images = [ip for ip in (p.get("images") or []) if isinstance(ip, str)]
+            n = len(images)
+            # include/exclude map
+            inc = st.session_state.include_map.get(idx)
+            if inc is None:
+                inc = {path: True for path in images}
+                st.session_state.include_map[idx] = inc
             else:
-                st.info(f"(Missing file) {cur_img_path}")
+                for path in images:
+                    inc.setdefault(path, True)
 
-        # Thumbnails — tighter packing, 1/4 size of previous (216x270 -> 54x68)
-        # Thumbnails — tiny + packed; show labels beneath each thumbnail
-        st.write("**Thumbnails**")
-        thumbs_per_row = 3
-        thumb_w, thumb_h = 108, 135  # quarter-size thumbs
-        label_index = st.session_state.get("label_index", {}) or {}
+            included = [path for path in images if inc.get(path, True)]
+            n_included = len(included)
+            with st.expander(f"**Post {idx+1}** — {n_included} selected / {n} total photo(s)", expanded=False):
 
-        for start in range(0, n, thumbs_per_row):
-            row_paths = images[start:start+thumbs_per_row]
-            try:
-                cols = st.columns(len(row_paths), gap=None)
-            except TypeError:
-                cols = st.columns(len(row_paths))
-            for j, img_path in enumerate(row_paths):
-                with cols[j]:
+                if n == 0:
+                    st.warning("This cluster contains no previewable images.")
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.divider()
+                    continue
+
+                # Per-cluster index
+                cur_key = f"car_{idx}"
+                if cur_key not in st.session_state:
+                    st.session_state[cur_key] = 1
+
+                # NAV ROW (buttons side-by-side on the left)
+                left_controls, _spacer = st.columns([2, 8])
+                with left_controls:
+                    cprev, cnext = st.columns([1, 1])
+                    prev_clicked = cprev.button("◀", key=f"prev_{idx}", use_container_width=True, disabled=(n_included < 2))
+                    next_clicked = cnext.button("▶", key=f"next_{idx}", use_container_width=True, disabled=(n_included < 2))
+                    #st.caption(f"{st.session_state[cur_key]} / {n_included}")
+
+                if n_included > 0:
+                    if prev_clicked:
+                        st.session_state[cur_key] = 1 if (st.session_state[cur_key] - 1) < 1 else (st.session_state[cur_key] - 1)
+                    if next_clicked:
+                        st.session_state[cur_key] = n_included if (st.session_state[cur_key] + 1) > n_included else (st.session_state[cur_key] + 1)
+
+                # Compose and show IG-like card
+                if n_included == 0:
+                    st.info("No images selected. Use the checkboxes below to include images in this post.")
+                else:
+                    st.session_state[cur_key] = max(1, min(st.session_state[cur_key], n_included))
+                    cur_img_path = included[st.session_state[cur_key] - 1]
+                    if os.path.exists(cur_img_path):
+                        base = resize_for_instagram(cur_img_path)
+                        # Clean caption (no inline hashtags)
+                        clean_caption = strip_hashtags(p.get("caption", ""))
+                        card = compose_ig_card(base, clean_caption, p.get("hashtags", []))
+                        zoomed = apply_zoom(card, st.session_state.preview_zoom)
+                        st.image(zoomed)
+                    else:
+                        st.info(f"(Missing file) {cur_img_path}")
+
+                # Thumbnails — tighter packing, 1/4 size of previous (216x270 -> 54x68)
+                # Thumbnails — tiny + packed; show labels beneath each thumbnail
+                st.write("**Thumbnails**")
+                thumbs_per_row = 3
+                thumb_w, thumb_h = 108, 135  # quarter-size thumbs
+                label_index = st.session_state.get("label_index", {}) or {}
+
+                for start in range(0, n, thumbs_per_row):
+                    row_paths = images[start:start+thumbs_per_row]
                     try:
-                        thumb = resize_for_instagram(img_path).resize((thumb_w, thumb_h), Image.LANCZOS)
-                        st.image(thumb)
-                    except Exception:
-                        st.info("(thumb unavailable)")
+                        cols = st.columns(len(row_paths), gap=None)
+                    except TypeError:
+                        cols = st.columns(len(row_paths))
+                    for j, img_path in enumerate(row_paths):
+                        with cols[j]:
+                            try:
+                                thumb = resize_for_instagram(img_path).resize((thumb_w, thumb_h), Image.LANCZOS)
+                                st.image(thumb)
+                            except Exception:
+                                st.info("(thumb unavailable)")
 
-                    # NEW: labels under the thumbnail
-                    labs = label_index.get(img_path, [])
-                    st.caption(", ".join(labs) if labs else "—")
+                            # NEW: labels under the thumbnail
+                            labs = label_index.get(img_path, [])
+                            st.caption(", ".join(labs) if labs else "—")
 
-                    # Include/Exclude toggle
-                    ck = st.checkbox("Include", value=inc.get(img_path, True), key=f"inc_{idx}_{start+j}")
-                    inc[img_path] = ck
-
-
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.divider()
+                            # Include/Exclude toggle
+                            ck = st.checkbox("Include", value=inc.get(img_path, True), key=f"inc_{idx}_{start+j}")
+                            inc[img_path] = ck
 
     # ---------- Export ----------
     export_rows = []
@@ -420,9 +443,8 @@ if posts:
         })
     export_obj = {"generated_at": int(time.time()), "posts": export_rows}
     export_json = json.dumps(export_obj, indent=2)
-    st.subheader("Export")
     st.download_button(
-        "Download Instagram Carousel JSON",
+        "EXPORT: Download Instagram Carousel JSON",
         data=export_json,
         file_name=f"ig_carousels_{int(time.time())}.json",
         mime="application/json",
