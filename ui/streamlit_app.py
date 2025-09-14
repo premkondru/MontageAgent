@@ -30,6 +30,14 @@ except ModuleNotFoundError:
 
 
 # ---------- Helpers ----------
+def _nav_prev(idx: int):
+    key = f"car_{idx}"
+    st.session_state[key] = max(1, int(st.session_state.get(key, 1)) - 1)
+
+def _nav_next(idx: int, n_included: int):
+    key = f"car_{idx}"
+    st.session_state[key] = min(int(n_included), int(st.session_state.get(key, 1)) + 1)
+
 def resize_for_instagram(img_path: str, target_ratio=(4, 5), target_size=(1080, 1350)) -> Image.Image:
     """Center-crop to 4:5 and resize to 1080x1350."""
     im = Image.open(img_path).convert("RGB")
@@ -214,7 +222,7 @@ with st.sidebar:
     ui_labels = [x.strip() for x in re.split(r"[,\n\r]+", labels_text) if x.strip()]
 
     # 2) Cluster: max images per post
-    max_imgs_default = int((cfg.get("clusterer", {}) or {}).get("max_images_per_post", 10))
+    max_imgs_default = int((cfg.get("cluster", {}) or {}).get("max_images_per_post", 10))
     ui_max_images = st.slider(
         "Max images per post (cluster cap)",
         min_value=1, max_value=10, value=6, step=1,
@@ -260,7 +268,7 @@ event_input = st.text_input(
     "Event Name",
     value=default_event,
     placeholder="e.g., IITG Orientation 2025",
-    help="Default is the name of the folder where the images are uploaded"
+    help="Defaults to the name of the uploads folder"
 )
 st.session_state.event_name_override = event_input.strip()
 
@@ -356,7 +364,7 @@ if posts:
 
             included = [path for path in images if inc.get(path, True)]
             n_included = len(included)
-            with st.expander(f"**Post {idx+1}** — {n_included} selected / {n} total photo(s)", expanded=False):
+            with st.expander(f"**Post {idx+1}** — {n} total photo(s)", expanded=True):
 
                 if n == 0:
                     st.warning("This cluster contains no previewable images.")
@@ -372,17 +380,18 @@ if posts:
                 # NAV ROW (buttons side-by-side on the left)
                 left_controls, _spacer = st.columns([2, 8])
                 with left_controls:
-                    cprev, cnext = st.columns([1, 1])
-                    prev_clicked = cprev.button("◀", key=f"prev_{idx}", use_container_width=True, disabled=(n_included < 2))
-                    next_clicked = cnext.button("▶", key=f"next_{idx}", use_container_width=True, disabled=(n_included < 2))
-                    #st.caption(f"{st.session_state[cur_key]} / {n_included}")
-
-                if n_included > 0:
-                    if prev_clicked:
-                        st.session_state[cur_key] = 1 if (st.session_state[cur_key] - 1) < 1 else (st.session_state[cur_key] - 1)
-                    if next_clicked:
-                        st.session_state[cur_key] = n_included if (st.session_state[cur_key] + 1) > n_included else (st.session_state[cur_key] + 1)
-
+                    cprev, cnext, ccp = st.columns([1, 1, 2])
+                    cprev.button(
+                        "◀", key=f"prev_{idx}", use_container_width=True,
+                        disabled=(n_included < 2), on_click=_nav_prev, args=(idx,)
+                    )
+                    cnext.button(
+                        "▶", key=f"next_{idx}", use_container_width=True,
+                        disabled=(n_included < 2), on_click=_nav_next, args=(idx, n_included)
+                    )
+                    # Optional: show index
+                    ccp.caption(f"{st.session_state[cur_key]} / {n_included}")
+                
                 # Compose and show IG-like card
                 if n_included == 0:
                     st.info("No images selected. Use the checkboxes below to include images in this post.")
