@@ -1,10 +1,13 @@
+# agent/supervisor.py
+# Supervises the workflow of multiple agents to process images
+# Each step's output is collected and returned as a list of StepResult
+# If any step fails, the error is captured and returned in the StepResult
 from dataclasses import dataclass
 from typing import Dict,Any,List
 import traceback
 from agent.tools.ingest import Ingestor
 from agent.tools.dedupe_quality import DedupeQuality
 from agent.tools.categorize import Categorizer
-from agent.tools.select_diverse import Selector
 from agent.tools.cluster_photos import Clusterer
 from agent.tools.captioner import Captioner
 from agent.tools.publisher import Publisher
@@ -18,22 +21,24 @@ class StepResult:
 
 class Supervisor:
     def __init__(self,cfg:Dict[str,Any]):
+        # Initialize all agents with "config"
         self.cfg=cfg
-        self.ingestor=Ingestor(cfg)
-        self.dq=DedupeQuality(cfg)
-        self.categorizer=Categorizer(cfg)
-        self.selector=Selector(cfg)
-        self.clusterer=Clusterer(cfg)
-        self.captioner=Captioner(cfg)
-        self.publisher=Publisher(cfg)
+        self.ingestor=Ingestor(cfg) # Images Ingestor
+        self.dq=DedupeQuality(cfg)  # Dedupe and Quality filter
+        self.categorizer=Categorizer(cfg)  # Categorize images with labels
+        self.clusterer=Clusterer(cfg)      # Cluster similar images
+        self.captioner=Captioner(cfg)      # Generate captions for image clusters
+        self.publisher=Publisher(cfg)      # Publish final output to instagram (Not Done)
     def run(self)->List[StepResult]:
         S=[]
+         # Each step appends its result to S
+         # If any step fails, catch the exception and append an error StepResult
+         # Finally, return the list of StepResult
         try:
             data=self.ingestor(); S.append(StepResult('ingest',{'n_items':len(data)}))
             data=self.dq(data); S.append(StepResult('dedupe_quality',{'n_items':len(data)}))
             data=self.categorizer(data); S.append(StepResult('categorize',{'n_items':len(data)}))
-            pick=self.selector(data); S.append(StepResult('select_diverse',{'n_selected':len(pick)}))
-            clusters=self.clusterer(pick); 
+            clusters=self.clusterer(data); 
             metrics = getattr(self.clusterer, 'last_metrics', {})
             S.append(StepResult('cluster', {'n_clusters': len(clusters), **metrics}))
             # NEW: build a per-image label index so the UI can show labels under thumbnails

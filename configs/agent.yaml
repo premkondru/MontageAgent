@@ -1,4 +1,4 @@
-pipeline: [ingest, dedupe_quality, categorize, select_diverse, cluster, captioner, publisher]
+pipeline: [ingest, dedupe_quality, categorize, cluster, captioner, publisher]
 embeddings: {backend: openclip, model: ViT-B-32, pretrained: laion2b_s34b_b79k, device: cpu}
 dedupe: {method: clip, clip_threshold: 0.800, near_dup_threshold: 5}
 categorize:
