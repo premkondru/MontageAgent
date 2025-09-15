@@ -29,6 +29,12 @@ pip-wheel-metadata/
 venv
 venv/
 **/venv/**
+.venvsource
+.venvsource/
+**/.venvsource/**
+venvsource
+venvsource/
+**/venvsource/**
 env
 env/
 **/env/**

@@ -8,7 +8,7 @@ lora:
 train:
   train_jsonl: "data/style/train_captioning.jsonl"
   val_jsonl:   "data/style/val_captioning.jsonl"
-  image_root:  "data/trainingevents"               # base for relative image paths
+  image_root:  "data"               # base for relative image paths
   num_train_epochs: 3
   per_device_train_batch_size: 2
   per_device_eval_batch_size: 2
