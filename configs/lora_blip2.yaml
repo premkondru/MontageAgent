@@ -27,3 +27,16 @@ infer:
   top_p: 0.9
   no_hashtags: true
   emoji_ok: true
+clipscore:
+  enabled: true
+  model: "ViT-B-32"
+  pretrained: "laion2b_s34b_b79k"
+eval:
+  generate: true
+  eval_subset_size: 512
+  metric_to_monitor: "clipscore"
+  early_stopping_patience: 2
+  num_beams: 4
+  max_new_tokens: 48
+  length_penalty: 0.9
+  no_repeat_ngram_size: 3

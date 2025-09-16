@@ -1,4 +1,15 @@
 pipeline: [ingest, dedupe_quality, categorize, cluster, captioner, publisher]
+clipscore:
+  enabled: true
+  model: "ViT-B-32"
+  pretrained: "laion2b_s34b_b79k"
+eval:
+  generate: true
+  eval_subset_size: 512
+  metric_to_monitor: "rougeL"
+  early_stopping_patience: 2
+  num_beams: 3
+  max_new_tokens: 32
 embeddings: {backend: openclip, model: ViT-B-32, pretrained: laion2b_s34b_b79k, device: cpu}
 dedupe: {method: clip, clip_threshold: 0.800, near_dup_threshold: 5}
 categorize:
@@ -8,7 +19,7 @@ categorize:
   topk: 3
 cluster:
   use_clip: true
-  k: auto
+  k: 10
   max_images_per_post: 6
   use_label_features: false         # ← enable fusion
   label_weight: 0.35               # ← scales label scores before concat

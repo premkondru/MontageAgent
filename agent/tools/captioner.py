@@ -180,13 +180,10 @@ class Captioner:
 
             label_str = ", ".join(labels) if labels else "event moments"
             style_tail = hints.get("style_tail", "")
-            topic = f"event titled '{event} at IIT Guwahati campus'" if event else "event at IIT Guwahati campus"
+            event_str = f"about '{event}'" if event else "for a college event"
             prompt = (
-                f"Write a short Instagram caption for a college photography club post"
-                f" starting with the words '{event}'. Do not use any other proper nouns."
-            ).strip()
-            prompt = (
-                f'Write a 3-5 word tagline for these photographs taken for a {topic}\n'
+                f"Write a short Instagram caption for a photography club post {event_str}. "
+                f"Focus on: {label_str}. Keep it natural and clean. No hashtags."
             ).strip()
     
             print(f"Prompt={prompt}")
