@@ -19,7 +19,7 @@ categorize:
   topk: 3
 cluster:
   use_clip: true
-  k: 10
+  k: auto
   max_images_per_post: 6
   use_label_features: false         # ← enable fusion
   label_weight: 0.35               # ← scales label scores before concat
