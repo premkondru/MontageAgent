@@ -1,10 +1,20 @@
 import os
+import sys, os, time, yaml, json, importlib.util, re
+from pathlib import Path
+from io import BytesIO
+
+# Ensure repo root is importable even if Streamlit launched from elsewhere
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+sup_path = repo_root.parent / "data" / "events"
+#sup_pathold = "data" / "events"
 
 def _is_img(fn): return fn.lower().endswith(('.jpg','.jpeg','.png'))
 class Ingestor:
     def __init__(self,cfg): self.cfg=cfg
     def __call__(self):
-        roots=self.cfg.get('ingest',{}).get('dirs',['data/events']); items=[]
+        roots=self.cfg.get('ingest',{}).get('dirs',[sup_path]); items=[]
         for root in roots:
             if not os.path.isdir(root): continue
             for e in sorted(os.listdir(root)):
