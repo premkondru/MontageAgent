@@ -3,7 +3,28 @@ Automates sorting, de-duplication, quality filtering, categorization, captioning
 
 Author: Prem Kondru (IIT Guwahati, B.Tech Engineering Physics)
 
-### Typical flows
+
+## Deliverables
+
+1. https://github.com/premkondru/MontageAgent
+2. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-AIAgentArchitecture.pdf
+3. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Data%20Science%20Report.pdf
+4. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Code-ChatGPT.pdf
+5. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf
+6. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-DataScienceReport-ChatGPT.pdf
+7. 
+1. deliverables/MontageAgent-Data Science Report.pdf
+1. deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf
+1. deliverables/MMontageAgent-Code-ChatGPT.pdf
+1. deliverables/MMontageAgent-DataScienceReport-ChatGPT.pdf
+1. deliverables/MontageAgent-ScreenRecording.mov
+
+
+
+
+
+
+### TGetting Started
 
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
