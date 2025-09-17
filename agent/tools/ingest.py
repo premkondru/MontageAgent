@@ -4,10 +4,10 @@ from pathlib import Path
 from io import BytesIO
 
 # Ensure repo root is importable even if Streamlit launched from elsewhere
-repo_root = Path(__file__).resolve().parents[1]
+repo_root = Path(__file__).resolve().parents[1].parent
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
-sup_path = repo_root.parent / "data" / "events"
+sup_path = repo_root / "data" / "events"
 #sup_pathold = "data" / "events"
 
 def _is_img(fn): return fn.lower().endswith(('.jpg','.jpeg','.png'))

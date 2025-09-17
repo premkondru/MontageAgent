@@ -183,11 +183,9 @@ def compose_ig_card(base_img: Image.Image, caption: str, hashtags: list[str]) ->
 
 
 # ---------- Page ----------
-st.set_page_config(page_title="Montage Insta Agent", layout="wide")
-st.title("📸 Montage Insta Agent")
-st.subheader("AI Agent for Event Photo Curation & Instagram Publishing")
-st.write("**Prem Kondru** - IIT Guwahati - Montage Photography Club");
-st.write("Automate sorting → **dedupe (CLIP)** → **clustering (CLIP)** → **captioning (BLIP_2 LORA RAG)** → publishing.")
+st.set_page_config(page_title="Montage Photo Agent", layout="wide")
+st.title("Montage Photo Agent")
+st.write("Automate sorting → **dedupe (CLIP)** → **clustering (CLIP)** → captioning → (optional) publishing.")
 
 # Minimal CSS for card container
 st.markdown("""
@@ -285,7 +283,6 @@ if uploads:
         ts = int(time.time())
         st.session_state.upload_session_dir = str(repo_root / "data" / "events" / f"upload_session_{ts}")
         os.makedirs(st.session_state.upload_session_dir, exist_ok=True)
-        st.toast(f"Created upload session dir: {st.session_state.upload_session_dir}", icon="📁");
 
     saved = 0
     for i, uf in enumerate(uploads, start=1):
