@@ -52,7 +52,7 @@ env/
 
 # --- Project data (generated during runs) ---
 # event uploads and any large raw photo drops
-# data/events/**
+data/events/**
 # keep placeholders
 !data/events/**/.gitkeep
 !**/.gitkeep
