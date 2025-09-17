@@ -1,165 +1,142 @@
-MontageAgent
-Automates sorting, de-duplication, quality filtering, categorization, captioning, hashtagging, and Instagram publishing for Montage’s event photos. Uses a LoRA-finetuned BLIP-2 captioner, CLIP-based selection, and a multi-agent (Planner–Executor with Supervisor/Critic) orchestration.
+# MontageAgent
 
-Author: Prem Kondru (IIT Guwahati, B.Tech Engineering Physics)
+Automates sorting, de-duplication, quality filtering, categorization, captioning, hashtagging, and Instagram publishing for **Montage’s event photos**.
+Uses a **LoRA-finetuned BLIP-2 captioner**, **CLIP-based selection**, and a **multi-agent (Planner–Executor with Supervisor/Critic) orchestration**.
 
+**Author:** Prem Kondru (IIT Guwahati, B.Tech Engineering Physics)
 
-## Project Deliverables
+---
 
-1. **[GitHub Repo – MontageAgent](https://github.com/premkondru/MontageAgent)**
-   Source code for the end-to-end project, configs, training scripts, and deliverables.
+## Overview
 
-2. **[Hugging Face Space – montage-agent](https://huggingface.co/spaces/premkondru/montage-agent)**
-   Live Streamlit app to demo the workflow: upload photos, run dedupe/clustering, generate captions (Template/BLIP-2), and preview posts.
+MontageAgent is an **AI-powered agent** developed for IIT Guwahati’s Photography Club (*Montage*) to streamline event photo management and Instagram publishing.
 
-3. **[AI Agent Architecture (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-AIAgentArchitecture.pdf)**
-   High-level system design of the Montage Agent, including components, data flow, and integration points.
+Currently, every event produces hundreds of images that require time-intensive manual effort:
 
-4. **[Data Science Report (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Data%20Science%20Report.pdf)**
-   Formal write-up of datasets, fine-tuning setup, evaluation (BLEU/ROUGE/CLIPScore, human ratings), and key results.
+* removing duplicates,
+* sorting and choosing the best shots,
+* categorizing by theme,
+* writing captions in a consistent tone,
+* packaging into Instagram carousels.
 
-5. **[Code Companion – ChatGPT (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Code-ChatGPT.pdf)**
-   Code-focused explanations and snippets generated with ChatGPT to aid understanding and maintenance.
+**MontageAgent automates this workflow end-to-end:**
+**Ingest → Dedupe → Cluster → Caption → Export**
 
-6. **[Architecture Doc – ChatGPT (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf)**
-   Narrative architecture overview produced with ChatGPT
+Human oversight remains built-in via a **Streamlit GUI** that allows selective edits and adjustments before final publishing.
 
-7. **[Data Science Report – ChatGPT (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-DataScienceReport-ChatGPT.pdf)**
-   Expanded, executive-style DS report drafted via ChatGPT, mirroring experiments and insights
+---
 
-8. **[Product Screenshots (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Screenshots.pdf)**
-   Slide-style gallery of key UI screens with placeholders and brief context for each step.
+## ⚡ GUI Quickstart (No Setup Needed)
 
-9. **[Screen Recording (MOV)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-ScreenRecording.mov)**
-   Short demo video showcasing the app flow—from image upload to caption generation and post preview.
+You can try MontageAgent right away via its deployed **Hugging Face Space**:
 
+👉 [**montage-agent on Hugging Face**](https://huggingface.co/spaces/premkondru/montage-agent)
 
+Steps:
 
-### TGetting Started
+1. Adjust settings (before upload):
+   * **Event name**
+   * **Labels** (related to the event, e.g., *audience, stage, portraits*)
+   * **Max images per carousel**
+   * **Captioner mode:**
+     * **Template Mode** → tighter, deterministic captions (good for campaigns).
+     * **BLIP-2 (LoRA) Mode** → creative, abstract captions (good for storytelling).
+2. Upload event photos (optional):
+   Sample images are pre-provided in the demo, so for quick testing you don’t need to upload your own.
+   You can also check “use only current upload session” if you want the app to ignore previously loaded images and restrict itself to just your current upload.
+3. Preview Instagram-style carousels with captions and hashtags.
+4. Exclude/include individual photos as needed.
+5. Download/export JSON for Instagram publishing.
+
+This is the fastest way to test the workflow without installing anything locally.
+
+---
+
+## ✨ Core Features
+
+* **Task automated:** Raw photo dumps → IG-ready posts.
+* **Fine-tuned model:** BLIP-2 (Flan-T5-XL) with LoRA (\~0.47% trainable params).
+* **Why LoRA:** Specializes captioner in Montage Club style → abstract, clean, no noisy @handles.
+* **Evaluation:** Validation loss, BLEU/ROUGE, CLIPScore + human ratings (IG-readiness).
+* **Outcome:** Abstract, creative captions consistently loved by the club.
+* **Streamlit UI:** Upload, dedupe, cluster & caption photos with human-in-the-loop edits.
+* **Hybrid captioner:** Template for concise captions, BLIP-2 for creative captions.
+
+---
+
+## 📦 Deliverables
+
+1. **[GitHub Repo – MontageAgent](https://github.com/premkondru/MontageAgent)** — Source code, configs, training scripts.
+2. **[Hugging Face Space – montage-agent](https://huggingface.co/spaces/premkondru/montage-agent)** — Live demo Streamlit app.
+3. **[Architecture (PDF)](deliverables/MontageAgent-AIAgentArchitecture.pdf)** — High-level design overview.
+4. **[Data Science Report (PDF)](deliverables/MontageAgent-Data%20Science%20Report.pdf)** — Datasets, fine-tuning setup, evaluation, results.
+5. **[Code Companion (PDF)](deliverables/MontageAgent-Code-ChatGPT.pdf)** — Code-focused explanations.
+6. **[Architecture Doc – ChatGPT (PDF)](deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf)**
+7. **[Data Science Report – ChatGPT (PDF)](deliverables/MontageAgent-DataScienceReport-ChatGPT.pdf)**
+8. **[Product Screenshots (PDF)](deliverables/MontageAgent-Screenshots.pdf)**
+9. **[Screen Recording (MOV)](deliverables/MontageAgent-ScreenRecording.mov)** — Demo video.
+
+---
+
+## 🚀 Getting Started (Local Setup)
+
+### 1. Clone the repo and create environment
+
+```bash
+git clone https://github.com/premkondru/MontageAgent.git
+cd MontageAgent
 
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+```
 
+### 2. Install dependencies
+
+```bash
 pip install -r requirements.txt
-
 pip install -e .
+```
 
+### 3. Launch the GUI (Streamlit)
+
+```bash
 streamlit run ui/streamlit_app.py
+```
 
-**Run the agent pipeline**
+### 4. Run the pipeline (CLI mode)
 
 ```bash
 python -m agent.supervisor --config configs/agent.yaml
 ```
 
-**Train BLIP-2 LoRA**
+### 5. Train BLIP-2 LoRA (optional)
 
 ```bash
 accelerate launch training/train_lora_blip2.py --config configs/lora_blip2.yaml
 ```
 
-**Try the UI**
+---
 
-```bash
-streamlit run ui/streamlit_app.py
-```
+## 📂 Repository Layout
+
+* **`agent/`** — Production pipeline (Supervisor + stage tools).
+* **`configs/`** — YAML configs for agent pipeline and LoRA training.
+* **`training/`** — Scripts for fine-tuning BLIP-2 with LoRA.
+* **`checkpoints/`** — Saved model checkpoints.
+* **`ui/`** — Streamlit GUI app.
+* **`deliverables/`** — Reports, screenshots, videos, architecture docs.
+* **`publisher/`** — Export/IG integration wrappers.
+* **`data/`** — Example datasets (images + caption files).
 
 ---
 
-Here’s what each part of your repo does, from top to bottom:
+## 🧠 Mental Model
+
+* **`agent/`** = Production pipeline.
+* **`training/` + `checkpoints/`** = Model improvement loop.
+* **`configs/`** = Switches everything via YAML.
+* **`ui/`** = Human-facing GUI.
+* **`deliverables/`** = Outputs to share with stakeholders.
 
 ---
-
-## Top-level
-
-* **`pyproject.toml` / `setup.py`** – packaging + install metadata so you can `pip install -e .`.
-* **`requirements.txt`** – Python deps for runtime/dev.
-* **`README.md`** – project overview and quickstart.
-* **`.gitignore`** – files/folders Git should skip.
-
----
-
-## Config & Data
-
-* **`configs/`**
-
-  * **`agent.yaml`** – end-to-end pipeline switches and defaults (e.g., `pipeline: [ingest, dedupe_quality, categorize, cluster, captioner, publisher]`, model/backends, thresholds).
-  * **`lora_blip2.yaml`** – training config for BLIP-2 LoRA (paths, lr, batch sizes, scheduler, eval options).
-* **`data/`** – raw/processed assets you run the pipeline or training on (e.g., images, JSONL caption files).
-
----
-
-## Runtime Agent
-
-* **`agent/`** – Python package for the production agent.
-
-  * **`__init__.py`** – package init.
-  * **`supervisor.py`** – orchestrator: reads `configs/agent.yaml`, runs stages in order, handles logging/IO.
-  * **`tools/`** – each pipeline stage as a tool (single-responsibility modules):
-
-    * **`ingest.py`** – discovers/loads images and metadata into a working manifest.
-    * **`dedupe_quality.py`** – near-duplicate removal (CLIP cosine + NMS) and basic quality gates.
-    * **`categorize.py`** – applies label classifier/tagger (e.g., “people”, “night”, “food”).
-    * **`clip_features.py`** – computes/loads CLIP embeddings used by dedupe/cluster/CLIPScore.
-    * **`cluster_photos.py`** – groups images (k/auto, silhouette reporting, optional label fusion).
-    * **`captioner.py`** – caption generation:
-
-      * **Template mode** – deterministic templates.
-      * **BLIP-2 mode** – LoRA-tuned BLIP-2; includes decoding + optional CLIPScore evaluation.
-    * **`publisher.py`** – assembles final post objects (caption + controlled hashtags), dry-run or push.
-
----
-
-## Checkpoints
-
-* **`checkpoints/lora_blip2_montage/`**
-
-  * **`best/`** – best-metric LoRA adapters (e.g., best ROUGE-L).
-  * **`last/`** – most recent training checkpoint.
-  * Used by `captioner.py` when BLIP-2 mode is selected.
-
----
-
-## Training
-
-* **`training/`** – scripts/notebooks for model fine-tuning and evaluation (e.g., `train_lora_blip2.py`, metric code, utilities).
-
-  * Reads `configs/lora_blip2.yaml`, saves to `checkpoints/lora_blip2_montage/`.
-
----
-
-## Deliverables
-
-* **`deliverables/`** – generated artifacts you share (report PDFs, slide exports, tables, sample posts, charts).
-
----
-
-## Publisher
-
-* **`publisher/`** – (optional) targets/integrations (e.g., export to CSV/JSON, API wrappers for IG scheduler). Keeps integration code separate from core agent.
-
----
-
-## UI
-
-* **`ui/streamlit_app.py`** – lightweight front end to run the pipeline interactively:
-
-  * Upload/select images
-  * Toggle Template vs BLIP-2
-  * Preview captions/hashtags
-  * Inspect CLIPScore/silhouette and download outputs
-
----
-
-
-
-### Mental model
-
-* **`agent/`** = production pipeline (stage-by-stage tools).
-* **`training/` + `checkpoints/`** = model improvement loop.
-* **`configs/`** = everything is driven by YAML.
-* **`ui/`** = demo/run it without code.
-* **`deliverables/`** = what you present/share.
-
-This layout cleanly separates *orchestration*, *ML training*, and *presentation*, making it easy to iterate on each without breaking the others.
 
