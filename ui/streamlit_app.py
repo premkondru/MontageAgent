@@ -12,6 +12,10 @@ from io import BytesIO
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageColor
 
+# --- writable base dir selection (HF Spaces safe) ---
+import tempfile
+
+
 # Ensure repo root is importable even if Streamlit launched from elsewhere
 repo_root = Path(__file__).resolve().parents[1]
 if str(repo_root) not in sys.path:
@@ -30,6 +34,29 @@ except ModuleNotFoundError:
 
 
 # ---------- Helpers ----------
+def get_writable_base_dir(preferred: str = None) -> Path:
+    """
+    Return a directory we can write to:
+      1) APP_DATA_DIR (if set)
+      2) /data          (HF Spaces persistent)
+      3) /tmp           (ephemeral)
+    """
+    candidates = [preferred or os.getenv("APP_DATA_DIR"), "/data", tempfile.gettempdir()]
+    for c in candidates:
+        if not c:
+            continue
+        p = Path(c)
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            test = p / ".rwtest"
+            with open(test, "w") as f:
+                f.write("ok")
+            test.unlink(missing_ok=True)
+            return p
+        except Exception:
+            continue
+    raise RuntimeError("No writable directory available")
+
 def _nav_prev(idx: int):
     key = f"car_{idx}"
     st.session_state[key] = max(1, int(st.session_state.get(key, 1)) - 1)
@@ -268,13 +295,15 @@ for key, default in [
 default_event = st.session_state.get("event_name_override", "")
 event_input = st.text_input(
     "Event Name",
-    value=default_event,
+    value="IITG Fest 2025",
     placeholder="e.g., IITG Orientation 2025",
     help="Defaults to the name of the uploads folder"
 )
 st.session_state.event_name_override = event_input.strip()
 
 # ---------- Upload images ----------
+BASE_DATA_DIR = get_writable_base_dir()
+st.toast(f"Using base data dir: {BASE_DATA_DIR}", icon="📁");
 uploads = st.file_uploader(
     "Drop JPG/PNG files",
     type=["jpg", "jpeg", "png"],
@@ -283,7 +312,8 @@ uploads = st.file_uploader(
 if uploads:
     if not st.session_state.upload_session_dir:
         ts = int(time.time())
-        st.session_state.upload_session_dir = str(repo_root / "data" / "events" / f"upload_session_{ts}")
+        #st.session_state.upload_session_dir = str(repo_root / "data" / "events" / f"upload_session_{ts}")
+        st.session_state.upload_session_dir = str(BASE_DATA_DIR / "data" / "events" / f"upload_session_{ts}")
         os.makedirs(st.session_state.upload_session_dir, exist_ok=True)
         st.toast(f"Created upload session dir: {st.session_state.upload_session_dir}", icon="📁");
 
