@@ -4,23 +4,34 @@ Automates sorting, de-duplication, quality filtering, categorization, captioning
 Author: Prem Kondru (IIT Guwahati, B.Tech Engineering Physics)
 
 
-## Deliverables
+## Project Deliverables
 
-1. https://github.com/premkondru/MontageAgent
-2. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-AIAgentArchitecture.pdf
-3. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Data%20Science%20Report.pdf
-4. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Code-ChatGPT.pdf
-5. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf
-6. https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-DataScienceReport-ChatGPT.pdf
-7. 
-1. deliverables/MontageAgent-Data Science Report.pdf
-1. deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf
-1. deliverables/MMontageAgent-Code-ChatGPT.pdf
-1. deliverables/MMontageAgent-DataScienceReport-ChatGPT.pdf
-1. deliverables/MontageAgent-ScreenRecording.mov
+1. **[GitHub Repo – MontageAgent](https://github.com/premkondru/MontageAgent)**
+   Source code for the end-to-end project, configs, training scripts, and deliverables.
 
+2. **[Hugging Face Space – montage-agent](https://huggingface.co/spaces/premkondru/montage-agent)**
+   Live Streamlit app to demo the workflow: upload photos, run dedupe/clustering, generate captions (Template/BLIP-2), and preview posts.
 
+3. **[AI Agent Architecture (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-AIAgentArchitecture.pdf)**
+   High-level system design of the Montage Agent, including components, data flow, and integration points.
 
+4. **[Data Science Report (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Data%20Science%20Report.pdf)**
+   Formal write-up of datasets, fine-tuning setup, evaluation (BLEU/ROUGE/CLIPScore, human ratings), and key results.
+
+5. **[Code Companion – ChatGPT (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Code-ChatGPT.pdf)**
+   Code-focused explanations and snippets generated with ChatGPT to aid understanding and maintenance.
+
+6. **[Architecture Doc – ChatGPT (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-ArchitectureDoc-ChatGPT.pdf)**
+   Narrative architecture overview produced with ChatGPT
+
+7. **[Data Science Report – ChatGPT (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-DataScienceReport-ChatGPT.pdf)**
+   Expanded, executive-style DS report drafted via ChatGPT, mirroring experiments and insights
+
+8. **[Product Screenshots (PDF)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-Screenshots.pdf)**
+   Slide-style gallery of key UI screens with placeholders and brief context for each step.
+
+9. **[Screen Recording (MOV)](https://github.com/premkondru/MontageAgent/blob/main/deliverables/MontageAgent-ScreenRecording.mov)**
+   Short demo video showcasing the app flow—from image upload to caption generation and post preview.
 
 
 
