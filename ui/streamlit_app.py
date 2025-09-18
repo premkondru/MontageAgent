@@ -243,7 +243,7 @@ with st.sidebar:
         pass
     labels_text = st.text_area(
         "Labels (, or /n separated)",
-        value="\n".join(default_labels) if default_labels else "stage\naudience\nspeaker\ngroup photo\nportrait\nnight\naward\nsports\nfood\nindoors\noutdoors\ncandid",
+        value="\n".join(default_labels) if default_labels else "stage\ninnovation\nspeaker\ncreativity\ntechnology\neducation",
         height=140,
         help="These are used by the categorizer/labeler (CLIP zero-shot).",
     )
@@ -295,7 +295,7 @@ for key, default in [
 default_event = st.session_state.get("event_name_override", "")
 event_input = st.text_input(
     "Event Name",
-    value="IITG Fest 2025",
+    value="Techniche2025",
     placeholder="e.g., IITG Orientation 2025",
     help="Defaults to the name of the uploads folder"
 )

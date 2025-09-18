@@ -14,7 +14,7 @@ embeddings: {backend: openclip, model: ViT-B-32, pretrained: laion2b_s34b_b79k, 
 dedupe: {method: clip, clip_threshold: 0.800, near_dup_threshold: 5}
 categorize:
   #labels: ["candid","portrait","group photo","stage","audience","speaker","award","sports","food","night","landscape","architecture","indoors","outdoors"]
-  labels: ["group photo","people","nature","Lord Ganesha","food","night","landscape","indoors","outdoors","person"]
+  labels: ["stage","speaker","innovation","technology","creativity","education","fun"]
   threshold: 0.40   # raise for stricter tags (e.g., 0.32–0.36)
   topk: 3
 cluster:
