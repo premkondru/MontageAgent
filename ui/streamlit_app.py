@@ -8,6 +8,7 @@
 import sys, os, time, yaml, json, importlib.util, re
 from pathlib import Path
 from io import BytesIO
+import shutil
 
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageColor
@@ -302,38 +303,43 @@ event_input = st.text_input(
 st.session_state.event_name_override = event_input.strip()
 
 # ---------- Upload images ----------
-BASE_DATA_DIR = get_writable_base_dir()
-st.toast(f"Using base data dir: {BASE_DATA_DIR}", icon="📁");
-uploads = st.file_uploader(
-    "Drop JPG/PNG files",
-    type=["jpg", "jpeg", "png"],
-    accept_multiple_files=True
-)
-if uploads:
-    if not st.session_state.upload_session_dir:
-        ts = int(time.time())
-        #st.session_state.upload_session_dir = str(repo_root / "data" / "events" / f"upload_session_{ts}")
-        st.session_state.upload_session_dir = str(BASE_DATA_DIR / "data" / "events" / f"upload_session_{ts}")
-        os.makedirs(st.session_state.upload_session_dir, exist_ok=True)
-        st.toast(f"Created upload session dir: {st.session_state.upload_session_dir}", icon="📁");
+BASE_DATA_DIR = get_writable_base_dir() / "data" / "events"
+use_upload_only = not st.checkbox("Use preloaded sample images", value=True)
+if use_upload_only:
+    st.info("Using uploaded images only. Upload new images below (JPG/PNG).")
+    #st.info(f"Base data dir: {BASE_DATA_DIR}", icon="📁")
+    shutil.rmtree(BASE_DATA_DIR, ignore_errors=True)
+    st.session_state.upload_session_dir = None
+    uploads = st.file_uploader(
+        "Drop JPG/PNG files",
+        type=["jpg", "jpeg", "png"],
+        accept_multiple_files=True
+    )
+    if uploads:
+        if not st.session_state.upload_session_dir:
+            ts = int(time.time())
+            st.session_state.upload_session_dir = str(BASE_DATA_DIR / f"upload_session_{ts}")
+            os.makedirs(st.session_state.upload_session_dir, exist_ok=True)
+            st.toast(f"Created upload session dir: {st.session_state.upload_session_dir}", icon="📁");
 
-    saved = 0
-    for i, uf in enumerate(uploads, start=1):
-        fname = os.path.basename(uf.name)
-        safe = "".join(c for c in fname if (c.isalnum() or c in ("-", "_", "."))).strip(".") or f"upload_{i}.jpg"
-        target = os.path.join(st.session_state.upload_session_dir, safe)
-        if not os.path.exists(target):
-            with open(target, "wb") as out:
-                out.write(uf.getbuffer())
-            saved += 1
+        saved = 0
+        for i, uf in enumerate(uploads, start=1):
+            fname = os.path.basename(uf.name)
+            safe = "".join(c for c in fname if (c.isalnum() or c in ("-", "_", "."))).strip(".") or f"upload_{i}.jpg"
+            target = os.path.join(st.session_state.upload_session_dir, safe)
+            if not os.path.exists(target):
+                with open(target, "wb") as out:
+                    out.write(uf.getbuffer())
+                saved += 1
 
-    if saved:
-        st.success(f"Saved {saved} new file(s) to `{st.session_state.upload_session_dir}`")
-    else:
-        st.info(f"Files already saved in `{st.session_state.upload_session_dir}`")
+        if saved:
+            st.success(f"Saved {saved} new file(s) to `{st.session_state.upload_session_dir}`")
+        else:
+            st.info(f"Files already saved in `{st.session_state.upload_session_dir}`")
+else:
+    st.info("Using preloaded sample images. Uncheck the box to upload your own images.")
 
 # ---------- Actions ----------
-use_upload_only = st.checkbox("Use only current upload session", value=False)
 run_clicked = st.button("Run Pipeline", type="primary")
 # Run pipeline on demand
 if run_clicked:
